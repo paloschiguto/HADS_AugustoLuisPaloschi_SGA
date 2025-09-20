@@ -1,5 +1,0 @@
-iniciando o primsa
-npx prisma init
-
-fazendo a migration
-npx prisma migrate dev --name init_sga
