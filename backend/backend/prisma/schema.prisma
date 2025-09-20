@@ -40,13 +40,13 @@ model Paciente {
   id          Int       @id @default(autoincrement())
   nome        String
   dataNasc    DateTime?
-  respId      Int?
+  respId      Int
   createdBy   Int
   createdOn   DateTime @default(now())
   modifiedBy  Int?
   modifiedOn  DateTime?
 
-  responsavel Usuario? @relation(fields: [respId], references: [id])
+  responsavel Usuario @relation(fields: [respId], references: [id])
   atendimentos Atendimento[]
 }
 
