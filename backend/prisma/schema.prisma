@@ -1,0 +1,97 @@
+datasource db {
+  provider = "postgresql"
+  url = env("DB_URL_CONECT")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Tipos de usuário
+model TipoDeUsuario {
+  id          Int       @id @default(autoincrement())
+  descricao   String
+  createdBy   Int
+  createdOn   DateTime @default(now())
+  modifiedBy  Int?
+  modifiedIn  DateTime?
+  usuarios    Usuario[]
+}
+
+// Usuários do sistema
+model Usuario {
+  id          Int       @id @default(autoincrement())
+  nome        String
+  email       String    @unique
+  senha       String
+  tpUsuId     Int
+  createdBy   Int
+  createdOn   DateTime @default(now())
+  modifiedBy  Int?
+  modifiedOn  DateTime?
+
+  tipo        TipoDeUsuario @relation(fields: [tpUsuId], references: [id])
+  atendimentos Atendimento[]
+  pacientes     Paciente[]
+}
+
+// Pacientes
+model Paciente {
+  id          Int       @id @default(autoincrement())
+  nome        String
+  dataNasc    DateTime?
+  respId      Int
+  createdBy   Int
+  createdOn   DateTime @default(now())
+  modifiedBy  Int?
+  modifiedOn  DateTime?
+
+  responsavel Usuario @relation(fields: [respId], references: [id])
+  atendimentos Atendimento[]
+}
+
+// Medicamentos
+model Medicamento {
+  id          Int       @id @default(autoincrement())
+  descricao   String
+  dosagem     String
+  createdBy   Int
+  createdOn   DateTime @default(now())
+  modifiedBy  Int?
+  modifiedOn  DateTime?
+
+  atendimentos MedicamentosAtend[]
+}
+
+// Atendimentos realizados
+model Atendimento {
+  id          Int       @id @default(autoincrement())
+  descricao   String
+  obs         String?
+  finalizado  Boolean
+  usuId       Int
+  pacId       Int
+  createdBy   Int
+  createdOn   DateTime  @default(now())
+  modifiedBy  Int?
+  modfiedOn   DateTime?
+
+  usuario     Usuario @relation(fields: [usuId], references: [id])
+  paciente    Paciente @relation(fields: [pacId], references: [id])
+  medicamentos MedicamentosAtend[]
+}
+
+// Relação entre atendimentos e medicamentos
+model MedicamentosAtend {
+  id         Int       @id @default(autoincrement())
+  atendId    Int
+  medId      Int
+  qtde       Int
+  createdBy  Int
+  createdOn  DateTime  @default(now())
+  modifiedBy Int?
+  modifiedOn DateTime?
+
+  atendimento Atendimento @relation(fields: [atendId], references: [id])
+  medicamento Medicamento @relation(fields: [medId], references: [id])
+}
