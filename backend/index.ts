@@ -2,6 +2,9 @@ import express from 'express'
 import tipoUsuarioRoutes from './src/routes/tipoUsuario.routes'
 import usuarioRoutes from './src/routes/usuario.routes'
 import pacienteRoutes from './src/routes/paciente.routes'
+import medicamentoRoutes from './src/routes/medicamento.routes'
+import atendimentoRoutes from './src/routes/atendimento.routes'
+import medicamentoAtendRoutes from './src/routes/medicamentoAtend.routes'
 
 const app = express()
 const PORT = process.env.PORT || 3000
@@ -12,6 +15,9 @@ app.use(express.json())
 app.use(`/${api}/tipos`, tipoUsuarioRoutes)
 app.use(`/${api}/usuarios`, usuarioRoutes)
 app.use(`/${api}/pacientes`, pacienteRoutes)
+app.use(`/${api}/medicamentos`, medicamentoRoutes)
+app.use(`/${api}/atendimentos`, atendimentoRoutes)
+app.use(`/${api}/medicamentosAtend`, medicamentoAtendRoutes)
 
 app.get(`/${api}`, (req, res) => {
     res.send('API do SGA rodando!')

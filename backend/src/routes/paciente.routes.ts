@@ -5,7 +5,7 @@ import {
   createPaciente, 
   updatePaciente, 
   deletePaciente 
-} from '../controrllers/PacienteController'
+} from '../controllers/PacienteController'
 
 const router = Router()
 

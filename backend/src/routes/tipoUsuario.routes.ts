@@ -6,7 +6,7 @@ import {
     createTipo, 
     updateTipo, 
     deleteTipo 
-} from '../controrllers/TipoUsuarioController'
+} from '../controllers/TipoUsuarioController'
 
 const router = Router()
 
