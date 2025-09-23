@@ -9,10 +9,10 @@ import {
 
 const router = Router()
 
-router.get('/atendimentos', getAtendimentos)
-router.get('/atendimentos/:id', getAtendimentoById)
-router.post('/atendimentos', createAtendimento)
-router.put('/atendimentos/:id', updateAtendimento)
-router.delete('/atendimentos/:id', deleteAtendimento)
+router.get('/', getAtendimentos)
+router.get('/:id', getAtendimentoById)
+router.post('/', createAtendimento)
+router.put('/:id', updateAtendimento)
+router.delete('/:id', deleteAtendimento)
 
 export default router
