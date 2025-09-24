@@ -24,6 +24,7 @@ model Usuario {
   nome        String
   email       String    @unique
   senha       String
+  ativo       Boolean @default(true)
   tpUsuId     Int
   createdBy   Int
   createdOn   DateTime @default(now())
@@ -39,6 +40,7 @@ model Usuario {
 model Paciente {
   id          Int       @id @default(autoincrement())
   nome        String
+  ativo       Boolean @default(true)
   dataNasc    DateTime?
   respId      Int?
   createdBy   Int
@@ -55,6 +57,7 @@ model Medicamento {
   id          Int       @id @default(autoincrement())
   descricao   String
   dosagem     String
+  ativo       Boolean @default(true)
   createdBy   Int
   createdOn   DateTime @default(now())
   modifiedBy  Int?
