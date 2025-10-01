@@ -34,6 +34,7 @@ model Usuario {
   tipo        TipoDeUsuario @relation(fields: [tpUsuId], references: [id])
   atendimentos Atendimento[]
   pacientes     Paciente[]
+  passwordResets PasswordReset[]
 }
 
 // Pacientes
@@ -97,4 +98,14 @@ model MedicamentosAtend {
 
   atendimento Atendimento @relation(fields: [atendId], references: [id])
   medicamento Medicamento @relation(fields: [medId], references: [id])
+}
+
+model PasswordReset {
+  id         Int      @id @default(autoincrement())
+  usuId      Int
+  codigo     String
+  used       Boolean  @default(false)
+  created_on DateTime @default(now())
+
+  usuario     Usuario @relation(fields: [usuId], references: [id])
 }

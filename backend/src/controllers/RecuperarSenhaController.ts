@@ -1,53 +1,83 @@
-// import { Request, Response } from 'express'
-// import { prisma } from '../prismaClient'
-// import bcrypt from 'bcryptjs'
-// import { Usuario } from '@prisma/client'
+import { Request, Response } from 'express'
+import { prisma } from '../prismaClient'
+import bcrypt from 'bcryptjs'
+import crypto from 'crypto'
+import { enviarCodigoRecuperacao } from '../controllers/EnviaEmail'
 
-// export const solicitarRecuperacao = async (req: Request, res: Response) => {
-//   const { email } = req.body
-//   if (!email) return res.status(400).json({ error: 'Email é obrigatório' })
+// Solicitar código de recuperação
+export const solicitarRecuperacao = async (req: Request, res: Response) => {
+  const { email } = req.body
 
-//   try {
-//     const usuario: Usuario | null = await prisma.usuario.findUnique({ where: { email } })
-//     if (!usuario) return res.status(404).json({ error: 'Usuário não encontrado' })
-//     if (!usuario.ativo) return res.status(403).json({ error: 'Usuário inativo' })
+  if (!email) return res.status(400).json({ error: 'Email é obrigatório' })
 
-//     const codigoRecuperacao = Math.floor(100000 + Math.random() * 900000).toString()
+  const usuario = await prisma.usuario.findUnique({ where: { email } })
+  if (!usuario || !usuario.ativo) {
+    return res.status(500).json({ message: 'Erro ao enviar o código para o e-mail informado.' })
+  }
 
-//     // TODO: enviar códigoRecuperacao por email
-//     await prisma.usuario.update({
-//       where: { id: usuario.id },
-//       data: { resetCode: codigoRecuperacao } // você precisa criar a coluna resetCode no schema
-//     })
+  const nome = usuario.nome.split(' ')[0]
 
-//     res.json({ message: 'Código de recuperação enviado para o email cadastrado' })
-//   } catch (error: any) {
-//     res.status(500).json({ error: 'Erro interno ao tentar recuperar senha', details: error.message })
-//   }
-// }
+  const codigo = crypto.randomInt(100000, 999999).toString()
+  const hashCodigo = await bcrypt.hash(codigo, 10)
 
-// export const resetarSenha = async (req: Request, res: Response) => {
-//   const { email, codigo, novaSenha } = req.body
-//   if (!email || !codigo || !novaSenha) return res.status(400).json({ error: 'Campos obrigatórios ausentes' })
-//   if (novaSenha.length < 8) return res.status(400).json({ error: 'Senha deve ter no mínimo 8 caracteres' })
+  await prisma.passwordReset.create({
+    data: {
+      usuId: usuario.id,
+      codigo: hashCodigo
+    }
+  })
 
-//   try {
-//     const usuario: Usuario | null = await prisma.usuario.findUnique({ where: { email } })
-//     if (!usuario) return res.status(404).json({ error: 'Usuário não encontrado' })
-//     if (!usuario.ativo) return res.status(403).json({ error: 'Usuário inativo' })
+  // envia o código para o e-mail do usuário
+  await enviarCodigoRecuperacao(email, nome, codigo)
 
-//     if (usuario.resetCode !== codigo) return res.status(400).json({ error: 'Código de recuperação inválido' })
+  res.json({ message: 'Código enviado para o e-mail informado.' })
+}
 
-//     const senhaHash = await bcrypt.hash(novaSenha, 10)
-//     if (await bcrypt.compare(novaSenha, usuario.senha)) return res.status(400).json({ error: 'Nova senha não pode ser igual à antiga' })
+// Redefinir senha
+export const redefinirSenha = async (req: Request, res: Response) => {
+  const { email, codigo, novaSenha } = req.body
 
-//     await prisma.usuario.update({
-//       where: { id: usuario.id },
-//       data: { senha: senhaHash, resetCode: null } // limpa o código após uso
-//     })
+  if (!email || !codigo || !novaSenha) {
+    return res.status(400).json({ error: 'Email, código e nova senha são obrigatórios' })
+  }
 
-//     res.json({ message: 'Senha alterada com sucesso' })
-//   } catch (error: any) {
-//     res.status(500).json({ error: 'Erro interno ao tentar resetar senha', details: error.message })
-//   }
-// }
+  const usuario = await prisma.usuario.findUnique({ where: { email } })
+  if (!usuario || !usuario.ativo) return res.status(400).json({ error: 'Usuário inválido ou inativo' })
+
+  const reset = await prisma.passwordReset.findFirst({
+    where: { usuId: usuario.id, used: false },
+    orderBy: { created_on: 'desc' }
+  })
+
+  if (!reset) return res.status(400).json({ error: 'Código inválido' })
+
+  const expiracao = new Date(reset.created_on.getTime() + 15 * 60 * 1000)
+  if (expiracao < new Date()) return res.status(400).json({ error: 'Código expirado' })
+
+  const codigoValido = await bcrypt.compare(codigo, reset.codigo)
+  if (!codigoValido) return res.status(400).json({ error: 'Código inválido' })
+
+  const senhaIgual = await bcrypt.compare(novaSenha, usuario.senha)
+  if (senhaIgual) return res.status(400).json({ error: 'A nova senha não pode ser igual à antiga' })
+
+  const senhaForte = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/.test(novaSenha)
+  if (!senhaForte) return res.status(400).json({ error: 'A senha deve ter no mínimo 8 caracteres, com letras e números' })
+
+  const hashNova = await bcrypt.hash(novaSenha, 10)
+  await prisma.usuario.update({
+    where: { email },
+    data: {
+      senha: novaSenha,
+      modifiedBy: usuario.id, 
+      modifiedOn: new Date()
+    }
+  })
+
+
+  await prisma.passwordReset.update({
+    where: { id: reset.id },
+    data: { used: true }
+  })
+
+  res.json({ message: 'Senha alterada com sucesso' })
+}

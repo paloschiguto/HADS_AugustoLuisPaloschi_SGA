@@ -1,8 +1,10 @@
-// import { Router } from 'express'
-// import { solicitarRecuperacao } from '../controllers/RecuperarSenhaController
+import { Router } from 'express'
+import { solicitarRecuperacao, redefinirSenha } from '../controllers/RecuperarSenhaController'
 
-// const router = Router()
+const router = Router()
 
-// router.post('/', solicitarRecuperacao)
+router.post('/solicitar', solicitarRecuperacao)
 
-// export default router
+router.post('/redefinir', redefinirSenha)
+
+export default router
