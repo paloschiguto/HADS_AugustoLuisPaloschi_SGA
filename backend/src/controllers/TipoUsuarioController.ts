@@ -1,11 +1,16 @@
 import { Request, Response } from 'express'
 import { prisma } from '../prismaClient'
+import { Prisma } from '@prisma/client'
 
-export const getTipos = async (req: Request, res: Response) => {
+export const findTipoById = async (id: number) => {
+    return prisma.tipoDeUsuario.findUnique({ where: { id } })
+}
+
+export const getTipos = async (_req: Request, res: Response) => {
     try {
         const tipos = await prisma.tipoDeUsuario.findMany()
-        if (tipos.length === 0) {
-            return res.status(404).json({error: 'Nenhum tipo de usuário cadastrado.'})
+        if (!tipos.length) {
+            return res.status(404).json({ error: 'Nenhum tipo de usuário cadastrado.' })
         }
         res.json(tipos)
     } catch (error) {
@@ -16,10 +21,8 @@ export const getTipos = async (req: Request, res: Response) => {
 export const getTipoById = async (req: Request, res: Response) => {
     const { id } = req.params
     try {
-        const tipo = await prisma.tipoDeUsuario.findUnique({ where: { id: Number(id) } })
-        if (!tipo){
-            return res.status(404).json({ error: 'Tipo de usuário não encontrado' })
-        } 
+        const tipo = await findTipoById(Number(id))
+        if (!tipo) return res.status(404).json({ error: 'Tipo de usuário não encontrado' })
         res.json(tipo)
     } catch (error) {
         res.status(500).json({ error: 'Erro ao buscar tipo de usuário' })
@@ -28,17 +31,14 @@ export const getTipoById = async (req: Request, res: Response) => {
 
 export const getTipoByDescricao = async (req: Request, res: Response) => {
     const { descricao } = req.query
-
-    if (!descricao) {
-        return res.status(400).json({ error: 'Parâmetro descricao é obrigatório' })
-    }
+    if (!descricao) return res.status(400).json({ error: 'Parâmetro descricao é obrigatório' })
 
     try {
         const tipos = await prisma.tipoDeUsuario.findMany({
             where: {
                 descricao: {
-                    contains: descricao.toString(), // busca parcial
-                    mode: 'insensitive' // case insensitive
+                    contains: descricao.toString(),
+                    mode: 'insensitive'
                 }
             }
         })
@@ -48,7 +48,6 @@ export const getTipoByDescricao = async (req: Request, res: Response) => {
         res.status(500).json({ error: 'Erro ao buscar tipos de usuário' })
     }
 }
-
 
 export const createTipo = async (req: Request, res: Response) => {
     const { descricao, createdBy } = req.body
@@ -65,10 +64,18 @@ export const createTipo = async (req: Request, res: Response) => {
 export const updateTipo = async (req: Request, res: Response) => {
     const { id } = req.params
     const { descricao, modifiedBy } = req.body
+
     try {
+        const tipo = await findTipoById(Number(id))
+        if (!tipo) return res.status(404).json({ error: 'Tipo de usuário não encontrado' })
+
+        const dataToUpdate: Prisma.TipoDeUsuarioUpdateInput = { modifiedOn: new Date() }
+        if (descricao !== undefined) dataToUpdate.descricao = descricao
+        if (modifiedBy !== undefined) dataToUpdate.modifiedBy = modifiedBy
+
         const tipoAtualizado = await prisma.tipoDeUsuario.update({
             where: { id: Number(id) },
-            data: { descricao, modifiedBy, modifiedIn: new Date() }
+            data: dataToUpdate
         })
         res.json(tipoAtualizado)
     } catch (error) {
@@ -78,7 +85,11 @@ export const updateTipo = async (req: Request, res: Response) => {
 
 export const deleteTipo = async (req: Request, res: Response) => {
     const { id } = req.params
+
     try {
+        const tipo = await findTipoById(Number(id))
+        if (!tipo) return res.status(404).json({ error: 'Tipo de usuário não encontrado' })
+
         await prisma.tipoDeUsuario.delete({ where: { id: Number(id) } })
         res.json({ message: 'Tipo de usuário deletado com sucesso' })
     } catch (error) {

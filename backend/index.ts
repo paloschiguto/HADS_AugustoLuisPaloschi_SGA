@@ -6,7 +6,7 @@ import medicamentoRoutes from './src/routes/medicamento.routes'
 import atendimentoRoutes from './src/routes/atendimento.routes'
 import medicamentoAtendRoutes from './src/routes/medicamentoAtend.routes'
 import loginRoutes from './src/routes/login.routes'
-import recuperarSenha from './src/routes/recuperarSenha.routes'
+import recuperarSenhaRoutes from './src/routes/recuperarSenha.routes'
 import dotenv from 'dotenv'
 
 const app = express()
@@ -24,7 +24,7 @@ app.use(`/${api}/medicamentos`, medicamentoRoutes)
 app.use(`/${api}/atendimentos`, atendimentoRoutes)
 app.use(`/${api}/medicamentosAtend`, medicamentoAtendRoutes)
 app.use(`/${api}/login`, loginRoutes)
-app.use(`/${api}/redefinirSenha`, recuperarSenha)
+app.use(`/${api}/redefinirSenha`, recuperarSenhaRoutes)
 
 app.get(`/${api}`, (req, res) => {
     res.send('API do SGA rodando!')

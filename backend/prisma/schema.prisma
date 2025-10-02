@@ -14,7 +14,7 @@ model TipoDeUsuario {
   createdBy   Int
   createdOn   DateTime @default(now())
   modifiedBy  Int?
-  modifiedIn  DateTime?
+  modifiedOn  DateTime?
   usuarios    Usuario[]
 }
 
@@ -78,7 +78,7 @@ model Atendimento {
   createdBy   Int
   createdOn   DateTime  @default(now())
   modifiedBy  Int?
-  modfiedOn   DateTime?
+  modifiedOn   DateTime?
 
   usuario     Usuario @relation(fields: [usuId], references: [id])
   paciente    Paciente @relation(fields: [pacId], references: [id])
@@ -107,5 +107,5 @@ model PasswordReset {
   used       Boolean  @default(false)
   created_on DateTime @default(now())
 
-  usuario     Usuario @relation(fields: [usuId], references: [id])
+  usuario    Usuario  @relation(fields: [usuId], references: [id], onDelete: Cascade)
 }

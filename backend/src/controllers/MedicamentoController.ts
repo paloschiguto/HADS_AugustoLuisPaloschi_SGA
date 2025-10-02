@@ -1,5 +1,10 @@
 import { Request, Response } from 'express'
 import { prisma } from '../prismaClient'
+import { Prisma } from '@prisma/client'
+
+export const findMedicamentoById = async (id: number) => {
+  return prisma.medicamento.findUnique({ where: { id } })
+}
 
 export const getMedicamentos = async (req: Request, res: Response) => {
   try {
@@ -14,9 +19,7 @@ export const getMedicamentos = async (req: Request, res: Response) => {
 export const getMedicamentoById = async (req: Request, res: Response) => {
   const { id } = req.params
   try {
-    const medicamento = await prisma.medicamento.findUnique({
-      where: { id: Number(id) }
-    })
+    const medicamento = await findMedicamentoById(Number(id))
     if (!medicamento) return res.status(404).json({ error: 'Medicamento não encontrado' })
     res.json(medicamento)
   } catch (error) {
@@ -45,14 +48,18 @@ export const updateMedicamento = async (req: Request, res: Response) => {
   const { id } = req.params
   const { descricao, dosagem, modifiedBy } = req.body
   try {
+    const medicamentoExistente = await findMedicamentoById(Number(id))
+    if (!medicamentoExistente) return res.status(404).json({ error: 'Medicamento não encontrado' })
+
+    const dataToUpdate: Prisma.MedicamentoUpdateInput = { modifiedOn: new Date() }
+
+    if (descricao !== undefined) dataToUpdate.descricao = descricao
+    if (dosagem !== undefined) dataToUpdate.dosagem = dosagem
+    if (modifiedBy !== undefined) dataToUpdate.modifiedBy = modifiedBy
+
     const medicamentoAtualizado = await prisma.medicamento.update({
       where: { id: Number(id) },
-      data: {
-        descricao,
-        dosagem,
-        modifiedBy,
-        modifiedOn: new Date()
-      }
+      data: dataToUpdate
     })
     res.json(medicamentoAtualizado)
   } catch (error: any) {
@@ -64,6 +71,9 @@ export const updateMedicamento = async (req: Request, res: Response) => {
 export const deleteMedicamento = async (req: Request, res: Response) => {
   const { id } = req.params
   try {
+    const medicamentoExistente = await findMedicamentoById(Number(id))
+    if (!medicamentoExistente) return res.status(404).json({ error: 'Medicamento não encontrado' })
+
     await prisma.medicamento.delete({ where: { id: Number(id) } })
     res.json({ message: 'Medicamento deletado com sucesso' })
   } catch (error) {

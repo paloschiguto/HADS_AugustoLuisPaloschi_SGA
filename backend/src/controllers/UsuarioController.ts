@@ -1,13 +1,18 @@
 import { Request, Response } from 'express'
 import { prisma } from '../prismaClient'
 import bcrypt from 'bcryptjs'
+import { Prisma } from '@prisma/client'
 
-export const getUsuarios = async (req: Request, res: Response) => {
+export const findUsuarioById = async (id: number) => {
+  return prisma.usuario.findUnique({ where: { id } })
+}
+
+export const getUsuarios = async (_req: Request, res: Response) => {
   try {
-    const usuarios = await prisma.usuario.findMany({
-      include: { tipo: true }
-    })
-    if (!usuarios.length) return res.status(404).json({ error: 'Nenhum usuário cadastrado.' })
+    const usuarios = await prisma.usuario.findMany({ include: { tipo: true } })
+    if (!usuarios.length) {
+      return res.status(404).json({ error: 'Nenhum usuário cadastrado.' })
+    }
     res.json(usuarios)
   } catch (error) {
     res.status(500).json({ error: 'Erro ao buscar usuários' })
@@ -17,10 +22,7 @@ export const getUsuarios = async (req: Request, res: Response) => {
 export const getUsuarioById = async (req: Request, res: Response) => {
   const { id } = req.params
   try {
-    const usuario = await prisma.usuario.findUnique({
-      where: { id: Number(id) },
-      include: { tipo: true }
-    })
+    const usuario = await findUsuarioById(Number(id))
     if (!usuario) return res.status(404).json({ error: 'Usuário não encontrado' })
     res.json(usuario)
   } catch (error) {
@@ -31,23 +33,17 @@ export const getUsuarioById = async (req: Request, res: Response) => {
 export const createUsuario = async (req: Request, res: Response) => {
   const { nome, email, senha, tpUsuId, createdBy } = req.body
   try {
-    const senhaHash = await bcrypt.hash(senha, 10) // hash da senha
+    const senhaForte = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/.test(senha)
+    if (!senhaForte) return res.status(400).json({ error: 'A senha deve ter no mínimo 8 caracteres, com letras e números' })
 
+    const senhaHash = await bcrypt.hash(senha, 10)
     const novoUsuario = await prisma.usuario.create({
-      data: {
-        nome,
-        email,
-        senha: senhaHash,
-        tpUsuId,
-        createdBy,
-        createdOn: new Date()
-      }
+      data: { nome, email, senha: senhaHash, tpUsuId, createdBy, createdOn: new Date() }
     })
+
     res.json(novoUsuario)
   } catch (error: any) {
-    if (error.code === 'P2002') {
-      return res.status(400).json({ error: 'Email já cadastrado' })
-    }
+    if (error.code === 'P2002') return res.status(400).json({ error: 'Email já cadastrado' })
     res.status(500).json({ error: error.message, details: error })
   }
 }
@@ -55,16 +51,21 @@ export const createUsuario = async (req: Request, res: Response) => {
 export const updateUsuario = async (req: Request, res: Response) => {
   const { id } = req.params
   const { nome, email, senha, tpUsuId, modifiedBy } = req.body
-  try {
-    const dataToUpdate: any = {
-      nome,
-      email,
-      tpUsuId,
-      modifiedBy,
-      modifiedOn: new Date()
-    }
 
-    if (senha) {
+  try {
+    const usuarioExistente = await findUsuarioById(Number(id))
+    if (!usuarioExistente) return res.status(404).json({ error: 'Usuário não encontrado' })
+
+    const dataToUpdate: Prisma.UsuarioUpdateInput = { modifiedOn: new Date() }
+    if (modifiedBy !== undefined) dataToUpdate.modifiedBy = modifiedBy
+    if (nome !== undefined) dataToUpdate.nome = nome
+    if (email !== undefined) dataToUpdate.email = email
+    if (tpUsuId !== undefined) dataToUpdate.tipo = { connect: { id: tpUsuId } }
+
+    if (senha !== undefined) {
+      const senhaForte = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/.test(senha)
+      if (!senhaForte) return res.status(400).json({ error: 'A senha deve ter no mínimo 8 caracteres, com letras e números' })
+
       dataToUpdate.senha = await bcrypt.hash(senha, 10)
     }
 
@@ -72,18 +73,19 @@ export const updateUsuario = async (req: Request, res: Response) => {
       where: { id: Number(id) },
       data: dataToUpdate
     })
+
     res.json(usuarioAtualizado)
   } catch (error: any) {
-    if (error.code === 'P2025') {
-      return res.status(404).json({ error: 'Usuário não encontrado' })
-    }
-    res.status(500).json({ error: 'Erro ao atualizar usuário' })
+    res.status(500).json({ error: 'Erro ao atualizar usuário', details: error.message })
   }
 }
 
 export const deleteUsuario = async (req: Request, res: Response) => {
   const { id } = req.params
   try {
+    const usuario = await findUsuarioById(Number(id))
+    if (!usuario) return res.status(404).json({ error: 'Usuário não encontrado' })
+
     await prisma.usuario.delete({ where: { id: Number(id) } })
     res.json({ message: 'Usuário deletado com sucesso' })
   } catch (error) {

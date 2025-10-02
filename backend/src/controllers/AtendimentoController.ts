@@ -1,5 +1,10 @@
 import { Request, Response } from 'express'
 import { prisma } from '../prismaClient'
+import { Prisma } from '@prisma/client'
+
+export const findAtendimentoById = async (id: number) => {
+  return prisma.atendimento.findUnique({ where: { id } })
+}
 
 export const getAtendimentos = async (req: Request, res: Response) => {
   try {
@@ -20,14 +25,7 @@ export const getAtendimentos = async (req: Request, res: Response) => {
 export const getAtendimentoById = async (req: Request, res: Response) => {
   const { id } = req.params
   try {
-    const atendimento = await prisma.atendimento.findUnique({
-      where: { id: Number(id) },
-      include: {
-        usuario: true,
-        paciente: true,
-        medicamentos: true
-      }
-    })
+    const atendimento = await findAtendimentoById(Number(id))
     if (!atendimento) return res.status(404).json({ error: 'Atendimento não encontrado' })
     res.json(atendimento)
   } catch (error) {
@@ -49,7 +47,10 @@ export const createAtendimento = async (req: Request, res: Response) => {
         createdOn: new Date()
       }
     })
-    res.json(novoAtendimento)
+    res.json({
+      message: "Atendimento criado com sucesso!",
+      atendimento: novoAtendimento
+    })
   } catch (error: any) {
     res.status(500).json({ error: error.message, details: error })
   }
@@ -59,17 +60,21 @@ export const updateAtendimento = async (req: Request, res: Response) => {
   const { id } = req.params
   const { descricao, obs, finalizado, usuId, pacId, modifiedBy } = req.body
   try {
+    const atendimentoExistente = await findAtendimentoById(Number(id))
+    if (!atendimentoExistente) return res.status(404).json({ error: 'Atendimento não encontrado' })
+
+    const dataToUpdate: Prisma.AtendimentoUpdateInput = { modifiedOn: new Date() }
+
+    if (descricao !== undefined) dataToUpdate.descricao = descricao
+    if (obs !== undefined) dataToUpdate.obs = obs || null
+    if (finalizado !== undefined) dataToUpdate.finalizado = finalizado
+    if (usuId !== undefined) dataToUpdate.usuario = { connect: { id: usuId } }
+    if (pacId !== undefined) dataToUpdate.paciente = { connect: { id: pacId } }
+    if (modifiedBy !== undefined) dataToUpdate.modifiedBy = modifiedBy
+
     const atendimentoAtualizado = await prisma.atendimento.update({
       where: { id: Number(id) },
-      data: {
-        descricao,
-        obs: obs || null,
-        finalizado,
-        usuId,
-        pacId,
-        modifiedBy,
-        modfiedOn: new Date()
-      }
+      data: dataToUpdate
     })
     res.json(atendimentoAtualizado)
   } catch (error: any) {
@@ -81,6 +86,9 @@ export const updateAtendimento = async (req: Request, res: Response) => {
 export const deleteAtendimento = async (req: Request, res: Response) => {
   const { id } = req.params
   try {
+    const atendimentoExistente = await findAtendimentoById(Number(id))
+    if (!atendimentoExistente) return res.status(404).json({ error: 'Atendimento não encontrado' })
+
     await prisma.atendimento.delete({ where: { id: Number(id) } })
     res.json({ message: 'Atendimento deletado com sucesso' })
   } catch (error) {

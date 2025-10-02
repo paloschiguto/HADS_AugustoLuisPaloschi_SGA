@@ -1,5 +1,11 @@
 import { Request, Response } from 'express'
 import { prisma } from '../prismaClient'
+import { Prisma } from '@prisma/client'
+
+export const findMedicAtendById = async (id: number) => {
+  return prisma.medicamentosAtend.findUnique({ where: { id } })
+}
+
 
 export const getMedicamentosAtend = async (req: Request, res: Response) => {
   try {
@@ -16,10 +22,7 @@ export const getMedicamentosAtend = async (req: Request, res: Response) => {
 export const getMedicamentoAtendById = async (req: Request, res: Response) => {
   const { id } = req.params
   try {
-    const registro = await prisma.medicamentosAtend.findUnique({
-      where: { id: Number(id) },
-      include: { atendimento: true, medicamento: true }
-    })
+    const registro = await findMedicAtendById(Number(id))
     if (!registro) return res.status(404).json({ error: 'Vínculo não encontrado' })
     res.json(registro)
   } catch (error) {
@@ -49,15 +52,19 @@ export const updateMedicamentoAtend = async (req: Request, res: Response) => {
   const { id } = req.params
   const { atendId, medId, qtde, modifiedBy } = req.body
   try {
+    const existente = await findMedicAtendById(Number(id))
+    if (!existente) return res.status(404).json({ error: 'Vínculo não encontrado' })
+
+    const dataToUpdate: Prisma.MedicamentosAtendUpdateInput = { modifiedOn: new Date() }
+
+    if (atendId !== undefined) dataToUpdate.atendimento = { connect: { id: atendId } }
+    if (medId !== undefined) dataToUpdate.medicamento = { connect: { id: medId } }
+    if (qtde !== undefined) dataToUpdate.qtde = qtde
+    if (modifiedBy !== undefined) dataToUpdate.modifiedBy = modifiedBy
+
     const atualizado = await prisma.medicamentosAtend.update({
       where: { id: Number(id) },
-      data: {
-        atendId,
-        medId,
-        qtde,
-        modifiedBy,
-        modifiedOn: new Date()
-      }
+      data: dataToUpdate
     })
     res.json(atualizado)
   } catch (error: any) {
@@ -69,6 +76,9 @@ export const updateMedicamentoAtend = async (req: Request, res: Response) => {
 export const deleteMedicamentoAtend = async (req: Request, res: Response) => {
   const { id } = req.params
   try {
+    const existente = await findMedicAtendById(Number(id))
+    if (!existente) return res.status(404).json({ error: 'Vínculo não encontrado' })
+
     await prisma.medicamentosAtend.delete({ where: { id: Number(id) } })
     res.json({ message: 'Vínculo excluído com sucesso' })
   } catch (error) {
