@@ -3,6 +3,19 @@ import { prisma } from '../prismaClient'
 import bcrypt from 'bcryptjs'
 import { Prisma } from '@prisma/client'
 
+// Função auxiliar para pegar o ID do usuário logado pelo token JWT
+const getUserIdFromReq = (req: Request): number | null => {
+    const authHeader = req.headers.authorization
+    if (!authHeader) return null
+    const token = authHeader.split(' ')[1]
+    try {
+        const decoded: any = require('jsonwebtoken').verify(token, process.env.JWT_SECRET)
+        return decoded.id
+    } catch {
+        return null
+    }
+}
+
 export const findUsuarioById = async (id: number) => {
   return prisma.usuario.findUnique({ where: { id } })
 }
@@ -31,14 +44,18 @@ export const getUsuarioById = async (req: Request, res: Response) => {
 }
 
 export const createUsuario = async (req: Request, res: Response) => {
-  const { nome, email, senha, tpUsuId, createdBy } = req.body
+  const { nome, email, senha, tpUsuId } = req.body
+
+  const userId = getUserIdFromReq(req) 
+  if (!userId) return res.status(401).json({ error: 'Usuário não autenticado' }) 
+
   try {
     const senhaForte = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/.test(senha)
     if (!senhaForte) return res.status(400).json({ error: 'A senha deve ter no mínimo 8 caracteres, com letras e números' })
 
     const senhaHash = await bcrypt.hash(senha, 10)
     const novoUsuario = await prisma.usuario.create({
-      data: { nome, email, senha: senhaHash, tpUsuId, createdBy, createdOn: new Date() }
+      data: { nome, email, senha: senhaHash, tpUsuId, createdBy: userId, createdOn: new Date() }
     })
 
     res.json(novoUsuario)
@@ -50,14 +67,16 @@ export const createUsuario = async (req: Request, res: Response) => {
 
 export const updateUsuario = async (req: Request, res: Response) => {
   const { id } = req.params
-  const { nome, email, senha, tpUsuId, modifiedBy } = req.body
+  const { nome, email, senha, tpUsuId } = req.body
+
+  const userId = getUserIdFromReq(req) 
+  if (!userId) return res.status(401).json({ error: 'Usuário não autenticado' })
 
   try {
     const usuarioExistente = await findUsuarioById(Number(id))
     if (!usuarioExistente) return res.status(404).json({ error: 'Usuário não encontrado' })
 
-    const dataToUpdate: Prisma.UsuarioUpdateInput = { modifiedOn: new Date() }
-    if (modifiedBy !== undefined) dataToUpdate.modifiedBy = modifiedBy
+    const dataToUpdate: Prisma.UsuarioUpdateInput = { modifiedOn: new Date(), modifiedBy: userId } 
     if (nome !== undefined) dataToUpdate.nome = nome
     if (email !== undefined) dataToUpdate.email = email
     if (tpUsuId !== undefined) dataToUpdate.tipo = { connect: { id: tpUsuId } }

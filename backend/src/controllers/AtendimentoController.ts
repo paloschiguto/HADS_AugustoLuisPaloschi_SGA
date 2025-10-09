@@ -2,6 +2,19 @@ import { Request, Response } from 'express'
 import { prisma } from '../prismaClient'
 import { Prisma } from '@prisma/client'
 
+// Função auxiliar para pegar o ID do usuário logado pelo token JWT
+const getUserIdFromReq = (req: Request): number | null => { // ← ALTERAÇÃO
+  const authHeader = req.headers.authorization
+  if (!authHeader) return null
+  const token = authHeader.split(' ')[1]
+  try {
+    const decoded: any = require('jsonwebtoken').verify(token, process.env.JWT_SECRET)
+    return decoded.id
+  } catch {
+    return null
+  }
+}
+
 export const findAtendimentoById = async (id: number) => {
   return prisma.atendimento.findUnique({ where: { id } })
 }
@@ -34,7 +47,11 @@ export const getAtendimentoById = async (req: Request, res: Response) => {
 }
 
 export const createAtendimento = async (req: Request, res: Response) => {
-  const { descricao, obs, finalizado, usuId, pacId, createdBy } = req.body
+  const { descricao, obs, finalizado, usuId, pacId } = req.body
+  const userId = getUserIdFromReq(req)
+
+  if (!userId) return res.status(401).json({ error: 'Usuário não autenticado' }) // ← NOVA CHECAGEM
+
   try {
     const novoAtendimento = await prisma.atendimento.create({
       data: {
@@ -43,7 +60,7 @@ export const createAtendimento = async (req: Request, res: Response) => {
         finalizado: finalizado ?? false,
         usuId,
         pacId,
-        createdBy,
+        createdBy: userId, 
         createdOn: new Date()
       }
     })
@@ -58,19 +75,25 @@ export const createAtendimento = async (req: Request, res: Response) => {
 
 export const updateAtendimento = async (req: Request, res: Response) => {
   const { id } = req.params
-  const { descricao, obs, finalizado, usuId, pacId, modifiedBy } = req.body
+  const { descricao, obs, finalizado, usuId, pacId } = req.body
+  const userId = getUserIdFromReq(req)
+
+  if (!userId) return res.status(401).json({ error: 'Usuário não autenticado' }) 
+
   try {
     const atendimentoExistente = await findAtendimentoById(Number(id))
     if (!atendimentoExistente) return res.status(404).json({ error: 'Atendimento não encontrado' })
 
-    const dataToUpdate: Prisma.AtendimentoUpdateInput = { modifiedOn: new Date() }
+    const dataToUpdate: Prisma.AtendimentoUpdateInput = {
+      modifiedOn: new Date(),
+      modifiedBy: userId 
+    }
 
     if (descricao !== undefined) dataToUpdate.descricao = descricao
     if (obs !== undefined) dataToUpdate.obs = obs || null
     if (finalizado !== undefined) dataToUpdate.finalizado = finalizado
     if (usuId !== undefined) dataToUpdate.usuario = { connect: { id: usuId } }
     if (pacId !== undefined) dataToUpdate.paciente = { connect: { id: pacId } }
-    if (modifiedBy !== undefined) dataToUpdate.modifiedBy = modifiedBy
 
     const atendimentoAtualizado = await prisma.atendimento.update({
       where: { id: Number(id) },
@@ -82,6 +105,7 @@ export const updateAtendimento = async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Erro ao atualizar atendimento' })
   }
 }
+
 
 export const deleteAtendimento = async (req: Request, res: Response) => {
   const { id } = req.params

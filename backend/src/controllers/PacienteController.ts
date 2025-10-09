@@ -2,6 +2,19 @@ import { Request, Response } from 'express'
 import { prisma } from '../prismaClient'
 import { Prisma } from '@prisma/client'
 
+// Função auxiliar para pegar o ID do usuário logado pelo token JWT
+const getUserIdFromReq = (req: Request): number | null => {
+    const authHeader = req.headers.authorization
+    if (!authHeader) return null
+    const token = authHeader.split(' ')[1]
+    try {
+        const decoded: any = require('jsonwebtoken').verify(token, process.env.JWT_SECRET)
+        return decoded.id
+    } catch {
+        return null
+    }
+}
+
 export const findPacienteById = async (id: number) => {
   return prisma.paciente.findUnique({ where: { id } })
 }
@@ -30,14 +43,18 @@ export const getPacienteById = async (req: Request, res: Response) => {
 }
 
 export const createPaciente = async (req: Request, res: Response) => {
-  const { nome, dataNasc, respId, createdBy } = req.body
+  const { nome, dataNasc, respId } = req.body
+
+  const userId = getUserIdFromReq(req) 
+  if (!userId) return res.status(401).json({ error: 'Usuário não autenticado' }) 
+
   try {
     const novoPaciente = await prisma.paciente.create({
       data: {
         nome,
         dataNasc: dataNasc ? new Date(dataNasc) : null,
         respId: respId || null,
-        createdBy,
+        createdBy: userId, 
         createdOn: new Date()
       }
     })
@@ -49,17 +66,20 @@ export const createPaciente = async (req: Request, res: Response) => {
 
 export const updatePaciente = async (req: Request, res: Response) => {
   const { id } = req.params
-  const { nome, dataNasc, respId, modifiedBy } = req.body
+  const { nome, dataNasc, respId } = req.body
+
+  const userId = getUserIdFromReq(req) 
+  if (!userId) return res.status(401).json({ error: 'Usuário não autenticado' }) 
+
   try {
     const pacienteExistente = await findPacienteById(Number(id))
     if (!pacienteExistente) return res.status(404).json({ error: 'Paciente não encontrado' })
 
-    const dataToUpdate: Prisma.PacienteUpdateInput = { modifiedOn: new Date() }
+    const dataToUpdate: Prisma.PacienteUpdateInput = { modifiedOn: new Date(), modifiedBy: userId } // ALTERAÇÃO: modifiedBy automático
 
     if (nome !== undefined) dataToUpdate.nome = nome
     if (dataNasc !== undefined) dataToUpdate.dataNasc = dataNasc ? new Date(dataNasc) : null
     if (respId !== undefined) dataToUpdate.responsavel = respId ? { connect: { id: respId } } : { disconnect: true }
-    if (modifiedBy !== undefined) dataToUpdate.modifiedBy = modifiedBy
 
     const pacienteAtualizado = await prisma.paciente.update({
       where: { id: Number(id) },

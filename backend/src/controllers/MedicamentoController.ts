@@ -2,6 +2,19 @@ import { Request, Response } from 'express'
 import { prisma } from '../prismaClient'
 import { Prisma } from '@prisma/client'
 
+// Função auxiliar para pegar o ID do usuário logado pelo token JWT
+const getUserIdFromReq = (req: Request): number | null => {
+    const authHeader = req.headers.authorization
+    if (!authHeader) return null
+    const token = authHeader.split(' ')[1]
+    try {
+        const decoded: any = require('jsonwebtoken').verify(token, process.env.JWT_SECRET)
+        return decoded.id
+    } catch {
+        return null
+    }
+}
+
 export const findMedicamentoById = async (id: number) => {
   return prisma.medicamento.findUnique({ where: { id } })
 }
@@ -28,13 +41,17 @@ export const getMedicamentoById = async (req: Request, res: Response) => {
 }
 
 export const createMedicamento = async (req: Request, res: Response) => {
-  const { descricao, dosagem, createdBy } = req.body
+  const { descricao, dosagem } = req.body
+
+  const userId = getUserIdFromReq(req) 
+  if (!userId) return res.status(401).json({ error: 'Usuário não autenticado' }) 
+
   try {
     const novoMedicamento = await prisma.medicamento.create({
       data: {
         descricao,
         dosagem,
-        createdBy,
+        createdBy: userId, 
         createdOn: new Date()
       }
     })
@@ -46,16 +63,19 @@ export const createMedicamento = async (req: Request, res: Response) => {
 
 export const updateMedicamento = async (req: Request, res: Response) => {
   const { id } = req.params
-  const { descricao, dosagem, modifiedBy } = req.body
+  const { descricao, dosagem } = req.body
+
+  const userId = getUserIdFromReq(req) 
+  if (!userId) return res.status(401).json({ error: 'Usuário não autenticado' })
+
   try {
     const medicamentoExistente = await findMedicamentoById(Number(id))
     if (!medicamentoExistente) return res.status(404).json({ error: 'Medicamento não encontrado' })
 
-    const dataToUpdate: Prisma.MedicamentoUpdateInput = { modifiedOn: new Date() }
+    const dataToUpdate: Prisma.MedicamentoUpdateInput = { modifiedOn: new Date(), modifiedBy: userId }
 
     if (descricao !== undefined) dataToUpdate.descricao = descricao
     if (dosagem !== undefined) dataToUpdate.dosagem = dosagem
-    if (modifiedBy !== undefined) dataToUpdate.modifiedBy = modifiedBy
 
     const medicamentoAtualizado = await prisma.medicamento.update({
       where: { id: Number(id) },

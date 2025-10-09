@@ -67,7 +67,7 @@ export const redefinirSenha = async (req: Request, res: Response) => {
   await prisma.usuario.update({
     where: { email },
     data: {
-      senha: novaSenha,
+      senha: hashNova,
       modifiedBy: usuario.id, 
       modifiedOn: new Date()
     }

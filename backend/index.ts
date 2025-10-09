@@ -1,4 +1,5 @@
 import express from 'express'
+import cors from 'cors'
 import tipoUsuarioRoutes from './src/routes/tipoUsuario.routes'
 import usuarioRoutes from './src/routes/usuario.routes'
 import pacienteRoutes from './src/routes/paciente.routes'
@@ -9,12 +10,14 @@ import loginRoutes from './src/routes/login.routes'
 import recuperarSenhaRoutes from './src/routes/recuperarSenha.routes'
 import dotenv from 'dotenv'
 
+dotenv.config()
+
 const app = express()
 const PORT = process.env.PORT || 3000
 const api = "SGA"
 
-dotenv.config()
-
+// Habilita CORS
+app.use(cors({ origin: 'http://localhost:5173' })) 
 app.use(express.json())
 
 app.use(`/${api}/tipos`, tipoUsuarioRoutes)
