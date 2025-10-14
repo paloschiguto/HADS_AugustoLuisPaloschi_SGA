@@ -1,17 +1,29 @@
-import { AuthProvider } from './services/authContext'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { AuthProvider, useAuth } from './services/authContext'
 import { Login } from './pages/login'
+import Layout from './components/layout'
+import Dashboard from './pages/dashboard'
 import { TiposUsuario } from './pages/tipoUsuario'
-import { useAuth } from './services/authContext'
 
-function AppContent() {
+function PrivateRoute({ children }) {
   const { user } = useAuth()
-  return user ? <TiposUsuario /> : <Login />
+  return user ? children : <Navigate to="/login" />
 }
 
 function App() {
   return (
     <AuthProvider>
-      <AppContent />
+      <BrowserRouter>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+
+          <Route path="/" element={<PrivateRoute><Layout /></PrivateRoute>}>
+            <Route index element={<Dashboard />} />
+            <Route path="dashboard" element={<Dashboard />} />
+            <Route path="tipos-usuario" element={<TiposUsuario />} />
+          </Route>
+        </Routes>
+      </BrowserRouter>
     </AuthProvider>
   )
 }

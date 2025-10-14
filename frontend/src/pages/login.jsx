@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import { useAuth } from '../services/authContext'
 import { ModalRedefinirSenha } from '../components/ModalRedefinirSenha'
+import { useNavigate } from 'react-router-dom'
 
 export function Login() {
   const { login } = useAuth()
+  const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [senha, setSenha] = useState('')
   const [erro, setErro] = useState('')
@@ -13,8 +15,9 @@ export function Login() {
     e.preventDefault()
     try {
       await login(email, senha)
+      navigate('/dashboard') // <-- redireciona para o dashboard
     } catch (err) {
-      setErro(err.response?.data?.error || 'Erro ao fazer login')
+      setErro(err.message) // mostra a mensagem do erro do authContext
     }
   }
 
@@ -77,7 +80,6 @@ export function Login() {
           onClose={() => setModalAberta(false)}
         />
       )}
-
     </div>
   )
 }
