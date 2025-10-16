@@ -2,7 +2,6 @@ import { Request, Response } from 'express'
 import { prisma } from '../prismaClient'
 import { Prisma } from '@prisma/client'
 
-// Função auxiliar para pegar o ID do usuário logado pelo token JWT
 const getUserIdFromReq = (req: Request): number | null => {
     const authHeader = req.headers.authorization
     if (!authHeader) return null

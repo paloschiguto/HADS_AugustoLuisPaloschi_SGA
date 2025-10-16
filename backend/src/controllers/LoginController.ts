@@ -2,7 +2,6 @@ import { Request, Response } from 'express'
 import { prisma } from '../prismaClient'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
-import { Usuario } from '@prisma/client'
 
 export const login = async (req: Request, res: Response) => {
     const { email, senha } = req.body
@@ -14,15 +13,12 @@ export const login = async (req: Request, res: Response) => {
     try {
         const usuario = await prisma.usuario.findUnique({
             where: { email },
-            include: {
-                tipo: true
-            }
+            include: { tipo: true }
         })
-
 
         const senhaValida = usuario && await bcrypt.compare(senha, usuario?.senha || '')
         if (!usuario || !senhaValida || !usuario.ativo) {
-            return res.status(401).json({ error: 'Credenciais inválidas ou usuário está inativo.' })
+            return res.status(401).json({ error: 'Credenciais inválidas ou usuário inativo.' })
         }
 
         const token = jwt.sign(
@@ -31,8 +27,14 @@ export const login = async (req: Request, res: Response) => {
             { expiresIn: '2h' }
         )
 
+        res.cookie('token', token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production', 
+            sameSite: 'lax',
+            maxAge: 2 * 60 * 60 * 1000 
+        })
+
         res.json({
-            token,
             usuario: {
                 nome: usuario.nome,
                 tipo: usuario.tipo.descricao,
@@ -44,6 +46,10 @@ export const login = async (req: Request, res: Response) => {
 }
 
 export const logout = async (_req: Request, res: Response) => {
-    // Como estamos usando JWT, o logout pode ser tratado no frontend apenas removendo o token
+    res.clearCookie('token', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax'
+    })
     res.json({ message: 'Logout realizado com sucesso' })
 }

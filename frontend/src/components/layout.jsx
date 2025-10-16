@@ -1,21 +1,15 @@
-import { Link, Outlet } from 'react-router-dom'
+import { Outlet } from 'react-router-dom'
+import Sidebar from './sidebar'
 
 export default function Layout() {
   return (
     <div className="flex min-h-screen">
-      {/* Sidebar */}
-      <aside className="w-64 bg-gray-800 text-white p-6 flex flex-col">
-        <h2 className="text-xl font-bold mb-6">SGA</h2>
-        <nav className="flex flex-col gap-4">
-          <Link to="/" className="hover:bg-gray-700 px-3 py-2 rounded">Dashboard</Link>
-          <Link to="/tipos-usuario" className="hover:bg-gray-700 px-3 py-2 rounded">Tipos de Usuário</Link>
-        </nav>
-      </aside>
-
-      {/* Conteúdo principal */}
-      <main className="flex-1 bg-background p-6">
+      <Sidebar />
+      <main className="flex-1 p-6 bg-background dark:bg-gray-900 text-textPrimary dark:text-gray-100 transition-colors">
         <Outlet />
       </main>
+
+
     </div>
   )
 }
