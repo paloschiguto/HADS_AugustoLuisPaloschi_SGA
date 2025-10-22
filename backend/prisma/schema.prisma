@@ -67,7 +67,6 @@ model Medicamento {
   atendimentos MedicamentosAtend[]
 }
 
-// Atendimentos realizados
 model Atendimento {
   id          Int       @id @default(autoincrement())
   descricao   String
@@ -78,14 +77,13 @@ model Atendimento {
   createdBy   Int
   createdOn   DateTime  @default(now())
   modifiedBy  Int?
-  modifiedOn   DateTime?
+  modifiedOn  DateTime?
 
   usuario     Usuario @relation(fields: [usuId], references: [id])
   paciente    Paciente @relation(fields: [pacId], references: [id])
   medicamentos MedicamentosAtend[]
 }
 
-// Relação entre atendimentos e medicamentos
 model MedicamentosAtend {
   id         Int       @id @default(autoincrement())
   atendId    Int
@@ -96,7 +94,7 @@ model MedicamentosAtend {
   modifiedBy Int?
   modifiedOn DateTime?
 
-  atendimento Atendimento @relation(fields: [atendId], references: [id])
+  atendimento Atendimento @relation(fields: [atendId], references: [id], onDelete: Cascade)
   medicamento Medicamento @relation(fields: [medId], references: [id])
 }
 

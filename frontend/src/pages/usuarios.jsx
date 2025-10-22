@@ -20,10 +20,15 @@ export const Usuarios = () => {
     const [senha, setSenha] = useState('')
     const [tpUsuId, setTpUsuId] = useState('')
 
+    // Mensagens de erro
+    const [erroNome, setErroNome] = useState('')
+    const [erroEmail, setErroEmail] = useState('')
+    const [erroSenha, setErroSenha] = useState('')
+    const [erroTipo, setErroTipo] = useState('')
+
     const carregarUsuarios = async () => {
         const data = await fetchUsuarios()
-        const ordenados = data.sort((a, b) => a.nome.localeCompare(b.nome))
-        setUsuarios(ordenados)
+        setUsuarios(data.sort((a, b) => a.nome.localeCompare(b.nome)))
     }
 
     const carregarTipos = async () => {
@@ -49,6 +54,10 @@ export const Usuarios = () => {
             setTpUsuId('')
             setUsuarioSelecionado(null)
         }
+        setErroNome('')
+        setErroEmail('')
+        setErroSenha('')
+        setErroTipo('')
         setModalAberto(true)
     }
 
@@ -59,10 +68,48 @@ export const Usuarios = () => {
         setSenha('')
         setTpUsuId('')
         setUsuarioSelecionado(null)
+        setErroNome('')
+        setErroEmail('')
+        setErroSenha('')
+        setErroTipo('')
+    }
+
+    const validarCampos = () => {
+        let valido = true
+
+        if (!nome.trim()) {
+            setErroNome('Nome é obrigatório')
+            valido = false
+        } else setErroNome('')
+
+        if (!email.trim()) {
+            setErroEmail('Email é obrigatório')
+            valido = false
+        } else if (!/\S+@\S+\.\S+/.test(email)) {
+            setErroEmail('Email inválido')
+            valido = false
+        } else setErroEmail('')
+
+        if (!tpUsuId) {
+            setErroTipo('Selecione um tipo de usuário')
+            valido = false
+        } else setErroTipo('')
+
+        if (!usuarioSelecionado) { // valida senha apenas ao criar
+            if (!senha) {
+                setErroSenha('Senha é obrigatória')
+                valido = false
+            } else if (senha.length < 6 || !/[A-Za-z]/.test(senha) || !/\d/.test(senha)) {
+                setErroSenha('Senha deve ter pelo menos 6 caracteres, letras e números')
+                valido = false
+            } else setErroSenha('')
+        }
+
+        return valido
     }
 
     const salvarUsuario = async () => {
-        if (!nome || !email || !tpUsuId) return
+        if (!validarCampos()) return
 
         const usuarioData = { nome, email, senha, tpUsuId }
 
@@ -82,6 +129,11 @@ export const Usuarios = () => {
         await carregarUsuarios()
         fecharModal()
     }
+
+    const inputClass = (erro) =>
+        `border rounded-md w-full p-2 mb-4 bg-white dark:bg-gray-700 text-textPrimary dark:text-gray-100
+         ${erro ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} 
+         focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors`
 
     return (
         <div className="p-6">
@@ -132,41 +184,48 @@ export const Usuarios = () => {
                 })}
             </ul>
 
-
-
             {/* Modal */}
             <Modal
                 isOpen={modalAberto}
                 title={usuarioSelecionado ? 'Editar Usuário' : 'Novo Usuário'}
                 onClose={fecharModal}
             >
+                {erroNome && <span className="text-red-500 text-sm mb-1 block">{erroNome}</span>}
                 <input
                     type="text"
                     value={nome}
-                    onChange={(e) => setNome(e.target.value)}
+                    onChange={(e) => { setNome(e.target.value); setErroNome('') }}
                     placeholder="Nome"
-                    className="border rounded-md w-full p-2 mb-4 bg-white dark:bg-gray-700 text-textPrimary dark:text-gray-100 border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                    className={inputClass(erroNome)}
                 />
+
+                {erroEmail && <span className="text-red-500 text-sm mb-1 block">{erroEmail}</span>}
                 <input
                     type="email"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(e) => { setEmail(e.target.value); setErroEmail('') }}
                     placeholder="Email"
-                    className="border rounded-md w-full p-2 mb-4 bg-white dark:bg-gray-700 text-textPrimary dark:text-gray-100 border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                    className={inputClass(erroEmail)}
                 />
+
                 {!usuarioSelecionado && (
-                    <input
-                        type="password"
-                        value={senha}
-                        onChange={(e) => setSenha(e.target.value)}
-                        placeholder="Senha"
-                        className="border rounded-md w-full p-2 mb-4 bg-white dark:bg-gray-700 text-textPrimary dark:text-gray-100 border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
-                    />
+                    <>
+                        {erroSenha && <span className="text-red-500 text-sm mb-1 block">{erroSenha}</span>}
+                        <input
+                            type="password"
+                            value={senha}
+                            onChange={(e) => { setSenha(e.target.value); setErroSenha('') }}
+                            placeholder="Senha"
+                            className={inputClass(erroSenha)}
+                        />
+                    </>
                 )}
+
+                {erroTipo && <span className="text-red-500 text-sm mb-1 block">{erroTipo}</span>}
                 <select
                     value={tpUsuId}
-                    onChange={(e) => setTpUsuId(Number(e.target.value))}
-                    className="border rounded-md w-full p-2 mb-4 bg-white dark:bg-gray-700 text-textPrimary dark:text-gray-100 border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                    onChange={(e) => { setTpUsuId(Number(e.target.value)); setErroTipo('') }}
+                    className={inputClass(erroTipo)}
                 >
                     <option value="">Selecione o tipo de usuário</option>
                     {tipos.map((tipo) => (
@@ -203,6 +262,5 @@ export const Usuarios = () => {
                 </div>
             </Modal>
         </div>
-
     )
 }

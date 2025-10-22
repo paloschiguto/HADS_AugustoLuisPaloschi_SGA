@@ -10,6 +10,7 @@ export const TiposUsuario = () => {
   const [descricao, setDescricao] = useState('')
   const [tipoSelecionado, setTipoSelecionado] = useState(null)
   const [modalAberto, setModalAberto] = useState(false)
+  const [erroDescricao, setErroDescricao] = useState('')
 
   const carregarTipos = async () => {
     const data = await fetchTipos()
@@ -28,26 +29,34 @@ export const TiposUsuario = () => {
       setDescricao('')
       setTipoSelecionado(null)
     }
+    setErroDescricao('')
     setModalAberto(true)
   }
 
   const fecharModal = () => {
     setDescricao('')
     setTipoSelecionado(null)
+    setErroDescricao('')
     setModalAberto(false)
   }
 
   const salvarTipo = async () => {
-    if (!descricao.trim()) return
-
-    if (tipoSelecionado) {
-      await atualizarTipo(tipoSelecionado.id, { descricao, modifiedBy: user.id })
-    } else {
-      await criarTipo({ descricao, createdBy: user.id })
+    if (!descricao.trim()) {
+      setErroDescricao('Descrição é obrigatória')
+      return
     }
 
-    await carregarTipos()
-    fecharModal()
+    try {
+      if (tipoSelecionado) {
+        await atualizarTipo(tipoSelecionado.id, { descricao, modifiedBy: user.id })
+      } else {
+        await criarTipo({ descricao, createdBy: user.id })
+      }
+      await carregarTipos()
+      fecharModal()
+    } catch (err) {
+      console.error('Erro ao salvar tipo:', err)
+    }
   }
 
   const confirmarExclusao = async () => {
@@ -95,12 +104,15 @@ export const TiposUsuario = () => {
         title={tipoSelecionado ? 'Editar Tipo' : 'Novo Tipo'}
         onClose={fecharModal}
       >
+        {erroDescricao && <span className="text-red-500 text-sm mb-1 block">{erroDescricao}</span>}
         <input
           type="text"
           value={descricao}
-          onChange={(e) => setDescricao(e.target.value)}
+          onChange={(e) => { setDescricao(e.target.value); setErroDescricao('') }}
           placeholder="Descrição do tipo"
-          className="border rounded-md w-full p-2 mb-4 dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:ring focus:ring-blue-200 dark:focus:ring-blue-500 transition"
+          className={`border rounded-md w-full p-2 mb-4 dark:bg-gray-700 dark:text-white
+            ${erroDescricao ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}
+            focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors`}
         />
 
         <div className="flex justify-between">

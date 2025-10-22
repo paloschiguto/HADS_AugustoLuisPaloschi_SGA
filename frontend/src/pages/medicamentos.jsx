@@ -15,6 +15,7 @@ export const Medicamentos = () => {
 
     const [descricao, setDescricao] = useState('')
     const [dosagem, setDosagem] = useState('')
+    const [erros, setErros] = useState({})
 
     const carregarMedicamentos = async () => {
         try {
@@ -39,6 +40,7 @@ export const Medicamentos = () => {
             setDosagem('')
             setMedicamentoSelecionado(null)
         }
+        setErros({})
         setModalAberto(true)
     }
 
@@ -47,10 +49,22 @@ export const Medicamentos = () => {
         setDescricao('')
         setDosagem('')
         setMedicamentoSelecionado(null)
+        setErros({})
+    }
+
+    const validarCampos = () => {
+        const novosErros = {}
+        if (!descricao) novosErros.descricao = 'Descrição é obrigatória'
+        if (!dosagem) novosErros.dosagem = 'Dosagem é obrigatória'
+        return novosErros
     }
 
     const salvarMedicamento = async () => {
-        if (!descricao || !dosagem) return
+        const validacao = validarCampos()
+        if (Object.keys(validacao).length) {
+            setErros(validacao)
+            return
+        }
 
         try {
             if (medicamentoSelecionado) {
@@ -126,19 +140,26 @@ export const Medicamentos = () => {
                 title={medicamentoSelecionado ? 'Editar Medicamento' : 'Novo Medicamento'}
                 onClose={fecharModal}
             >
+                {erros.descricao && <span className="text-red-500 text-sm mb-1 block">{erros.descricao}</span>}
                 <input
                     type="text"
                     value={descricao}
                     onChange={(e) => setDescricao(e.target.value)}
                     placeholder="Descrição"
-                    className="border rounded-md w-full p-2 mb-4 bg-white dark:bg-gray-700 text-textPrimary dark:text-gray-100 border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                    className={`border rounded-md w-full p-2 mb-4 bg-white dark:bg-gray-700 text-textPrimary dark:text-gray-100
+                        ${erros.descricao ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}
+                        focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors`}
                 />
+
+                {erros.dosagem && <span className="text-red-500 text-sm mb-1 block">{erros.dosagem}</span>}
                 <input
                     type="text"
                     value={dosagem}
                     onChange={(e) => setDosagem(e.target.value)}
                     placeholder="Dosagem"
-                    className="border rounded-md w-full p-2 mb-4 bg-white dark:bg-gray-700 text-textPrimary dark:text-gray-100 border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                    className={`border rounded-md w-full p-2 mb-4 bg-white dark:bg-gray-700 text-textPrimary dark:text-gray-100
+                        ${erros.dosagem ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}
+                        focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors`}
                 />
 
                 <div className="flex justify-between items-center">

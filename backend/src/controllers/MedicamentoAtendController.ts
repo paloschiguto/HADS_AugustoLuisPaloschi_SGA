@@ -1,18 +1,17 @@
 import { Request, Response } from 'express'
 import { prisma } from '../prismaClient'
 import { Prisma } from '@prisma/client'
+import jwt from 'jsonwebtoken'
 
-// Função auxiliar para pegar o ID do usuário logado pelo token JWT
 const getUserIdFromReq = (req: Request): number | null => {
-    const authHeader = req.headers.authorization
-    if (!authHeader) return null
-    const token = authHeader.split(' ')[1]
-    try {
-        const decoded: any = require('jsonwebtoken').verify(token, process.env.JWT_SECRET)
-        return decoded.id
-    } catch {
-        return null
-    }
+  const token = req.cookies?.token
+  if (!token) return null
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { id: number }
+    return decoded.id
+  } catch {
+    return null
+  }
 }
 
 export const findMedicAtendById = async (id: number) => {
@@ -43,10 +42,12 @@ export const getMedicamentoAtendById = async (req: Request, res: Response) => {
 }
 
 export const createMedicamentoAtend = async (req: Request, res: Response) => {
-  const { atendId, medId, qtde } = req.body
+  let { atendId, medId, qtde } = req.body
+  const userId = getUserIdFromReq(req)
+  if (!userId) return res.status(401).json({ error: 'Usuário não autenticado' })
 
-  const userId = getUserIdFromReq(req) 
-  if (!userId) return res.status(401).json({ error: 'Usuário não autenticado' }) 
+  atendId = Number(atendId)
+  medId = Number(medId)
 
   try {
     const novo = await prisma.medicamentosAtend.create({
@@ -54,31 +55,34 @@ export const createMedicamentoAtend = async (req: Request, res: Response) => {
         atendId,
         medId,
         qtde,
-        createdBy: userId, 
+        createdBy: userId,
         createdOn: new Date()
       }
     })
     res.json(novo)
   } catch (error: any) {
+    console.error('ERRO CREATE MEDICAMENTO ATEND:', error)
     res.status(500).json({ error: error.message, details: error })
   }
 }
 
 export const updateMedicamentoAtend = async (req: Request, res: Response) => {
   const { id } = req.params
-  const { atendId, medId, qtde } = req.body
-
-  const userId = getUserIdFromReq(req) 
+  let { atendId, medId, qtde } = req.body
+  const userId = getUserIdFromReq(req)
   if (!userId) return res.status(401).json({ error: 'Usuário não autenticado' })
 
   try {
     const existente = await findMedicAtendById(Number(id))
     if (!existente) return res.status(404).json({ error: 'Vínculo não encontrado' })
 
-    const dataToUpdate: Prisma.MedicamentosAtendUpdateInput = { modifiedOn: new Date(), modifiedBy: userId }
+    const dataToUpdate: Prisma.MedicamentosAtendUpdateInput = {
+      modifiedOn: new Date(),
+      modifiedBy: userId
+    }
 
-    if (atendId !== undefined) dataToUpdate.atendimento = { connect: { id: atendId } }
-    if (medId !== undefined) dataToUpdate.medicamento = { connect: { id: medId } }
+    if (atendId !== undefined) dataToUpdate.atendimento = { connect: { id: Number(atendId) } }
+    if (medId !== undefined) dataToUpdate.medicamento = { connect: { id: Number(medId) } }
     if (qtde !== undefined) dataToUpdate.qtde = qtde
 
     const atualizado = await prisma.medicamentosAtend.update({

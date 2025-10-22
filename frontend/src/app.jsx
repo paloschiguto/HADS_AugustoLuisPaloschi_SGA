@@ -8,6 +8,7 @@ import { TiposUsuario } from './pages/tipoUsuario'
 import { Usuarios } from './pages/usuarios'
 import { Pacientes } from './pages/pacientes'
 import { Medicamentos } from './pages/medicamentos'
+import { Atendimentos } from './pages/atendimento'
 
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth()
@@ -32,6 +33,7 @@ function App() {
               <Route path="usuarios" element={<Usuarios />} />
               <Route path="pacientes" element={<Pacientes />} />
               <Route path="medicamentos" element={<Medicamentos />} />
+              <Route path="atendimentos" element={<Atendimentos />} />
             </Route>
           </Routes>
         </BrowserRouter>

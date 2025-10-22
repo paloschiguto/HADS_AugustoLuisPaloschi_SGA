@@ -1,17 +1,17 @@
 import { Request, Response } from 'express'
 import { prisma } from '../prismaClient'
 import { Prisma } from '@prisma/client'
+import jwt from 'jsonwebtoken'
 
 const getUserIdFromReq = (req: Request): number | null => {
-    const authHeader = req.headers.authorization
-    if (!authHeader) return null
-    const token = authHeader.split(' ')[1]
-    try {
-        const decoded: any = require('jsonwebtoken').verify(token, process.env.JWT_SECRET)
-        return decoded.id
-    } catch {
-        return null
-    }
+  const token = req.cookies?.token
+  if (!token) return null
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { id: number }
+    return decoded.id
+  } catch {
+    return null
+  }
 }
 
 export const findMedicamentoById = async (id: number) => {
@@ -41,21 +41,21 @@ export const getMedicamentoById = async (req: Request, res: Response) => {
 
 export const createMedicamento = async (req: Request, res: Response) => {
   const { descricao, dosagem } = req.body
-
-  const userId = getUserIdFromReq(req) 
-  if (!userId) return res.status(401).json({ error: 'Usuário não autenticado' }) 
+  const userId = getUserIdFromReq(req)
+  if (!userId) return res.status(401).json({ error: 'Usuário não autenticado' })
 
   try {
     const novoMedicamento = await prisma.medicamento.create({
       data: {
         descricao,
         dosagem,
-        createdBy: userId, 
+        createdBy: userId,
         createdOn: new Date()
       }
     })
     res.json(novoMedicamento)
   } catch (error: any) {
+    console.error('ERRO CREATE MEDICAMENTO:', error)
     res.status(500).json({ error: error.message, details: error })
   }
 }
@@ -63,8 +63,7 @@ export const createMedicamento = async (req: Request, res: Response) => {
 export const updateMedicamento = async (req: Request, res: Response) => {
   const { id } = req.params
   const { descricao, dosagem } = req.body
-
-  const userId = getUserIdFromReq(req) 
+  const userId = getUserIdFromReq(req)
   if (!userId) return res.status(401).json({ error: 'Usuário não autenticado' })
 
   try {

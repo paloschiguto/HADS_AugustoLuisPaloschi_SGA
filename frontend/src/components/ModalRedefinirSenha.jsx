@@ -8,6 +8,9 @@ export function ModalRedefinirSenha({ isOpen, onClose }) {
   const [fase, setFase] = useState(1)
   const [mensagem, setMensagem] = useState('')
   const [erro, setErro] = useState('')
+  const [erroEmail, setErroEmail] = useState('')
+  const [erroCodigo, setErroCodigo] = useState('')
+  const [erroSenha, setErroSenha] = useState('')
   const [loading, setLoading] = useState(false)
 
   if (!isOpen) return null
@@ -16,6 +19,11 @@ export function ModalRedefinirSenha({ isOpen, onClose }) {
     e.preventDefault()
     setMensagem('')
     setErro('')
+    setErroEmail('')
+    if (!email.trim()) {
+      setErroEmail('O email é obrigatório')
+      return
+    }
     setLoading(true)
     try {
       const res = await solicitarCodigo(email)
@@ -32,6 +40,22 @@ export function ModalRedefinirSenha({ isOpen, onClose }) {
     e.preventDefault()
     setMensagem('')
     setErro('')
+    setErroCodigo('')
+    setErroSenha('')
+    let valido = true
+    if (!codigo.trim()) {
+      setErroCodigo('O código é obrigatório')
+      valido = false
+    }
+    if (!novaSenha.trim()) {
+      setErroSenha('A senha é obrigatória')
+      valido = false
+    } else if (novaSenha.length < 6) {
+      setErroSenha('A senha deve ter no mínimo 6 caracteres')
+      valido = false
+    }
+    if (!valido) return
+
     setLoading(true)
     try {
       const res = await redefinirSenha(email, codigo, novaSenha)
@@ -63,15 +87,18 @@ export function ModalRedefinirSenha({ isOpen, onClose }) {
             {mensagem && <div className="bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 p-2 mb-2 rounded">{mensagem}</div>}
             {erro && <div className="bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 p-2 mb-2 rounded">{erro}</div>}
 
-            <form onSubmit={handleSolicitarCodigo} className="space-y-4">
-              <input
-                type="email"
-                placeholder="Seu email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full border dark:border-gray-600 px-3 py-2 rounded bg-white dark:bg-gray-700 text-textPrimary dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
-                required
-              />
+            <form onSubmit={handleSolicitarCodigo}>
+              <div className="mb-3">
+                <input
+                  type="email"
+                  placeholder="Seu email"
+                  value={email}
+                  onChange={(e) => { setEmail(e.target.value); setErroEmail('') }}
+                  className={`w-full border px-3 py-2 rounded bg-white dark:bg-gray-700 text-textPrimary dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${erroEmail ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}`}
+                />
+                {erroEmail && <span className="text-red-500 text-sm mt-1 block">{erroEmail}</span>}
+              </div>
+
               <button
                 type="submit"
                 disabled={loading}
@@ -102,23 +129,29 @@ export function ModalRedefinirSenha({ isOpen, onClose }) {
             {mensagem && <div className="bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 p-2 mb-2 rounded">{mensagem}</div>}
             {erro && <div className="bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 p-2 mb-2 rounded">{erro}</div>}
 
-            <form onSubmit={handleRedefinirSenha} className="space-y-4">
-              <input
-                type="text"
-                placeholder="Código recebido"
-                value={codigo}
-                onChange={(e) => setCodigo(e.target.value)}
-                className="w-full border dark:border-gray-600 px-3 py-2 rounded bg-white dark:bg-gray-700 text-textPrimary dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
-                required
-              />
-              <input
-                type="password"
-                placeholder="Nova senha"
-                value={novaSenha}
-                onChange={(e) => setNovaSenha(e.target.value)}
-                className="w-full border dark:border-gray-600 px-3 py-2 rounded bg-white dark:bg-gray-700 text-textPrimary dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
-                required
-              />
+            <form onSubmit={handleRedefinirSenha}>
+              <div className="mb-3">
+                <input
+                  type="text"
+                  placeholder="Código recebido"
+                  value={codigo}
+                  onChange={(e) => { setCodigo(e.target.value); setErroCodigo('') }}
+                  className={`w-full border px-3 py-2 rounded bg-white dark:bg-gray-700 text-textPrimary dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${erroCodigo ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}`}
+                />
+                {erroCodigo && <span className="text-red-500 text-sm mt-1 block">{erroCodigo}</span>}
+              </div>
+
+              <div className="mb-3">
+                <input
+                  type="password"
+                  placeholder="Nova senha"
+                  value={novaSenha}
+                  onChange={(e) => { setNovaSenha(e.target.value); setErroSenha('') }}
+                  className={`w-full border px-3 py-2 rounded bg-white dark:bg-gray-700 text-textPrimary dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${erroSenha ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}`}
+                />
+                {erroSenha && <span className="text-red-500 text-sm mt-1 block">{erroSenha}</span>}
+              </div>
+
               <button
                 type="submit"
                 disabled={loading}

@@ -1,24 +1,26 @@
 import { Request, Response } from 'express'
 import { prisma } from '../prismaClient'
 import { Prisma } from '@prisma/client'
+import jwt from 'jsonwebtoken'
 
-// Função auxiliar para pegar o ID do usuário logado pelo token JWT
-const getUserIdFromReq = (req: Request): number | null => { // ← ALTERAÇÃO
-  const authHeader = req.headers.authorization
-  if (!authHeader) return null
-  const token = authHeader.split(' ')[1]
+// Função auxiliar para pegar o ID do usuário logado pelo token JWT nos cookies
+const getUserIdFromReq = (req: Request): number | null => {
+  const token = req.cookies?.token
+  if (!token) return null
   try {
-    const decoded: any = require('jsonwebtoken').verify(token, process.env.JWT_SECRET)
+    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { id: number }
     return decoded.id
   } catch {
     return null
   }
 }
 
+// Função auxiliar para buscar atendimento por ID
 export const findAtendimentoById = async (id: number) => {
   return prisma.atendimento.findUnique({ where: { id } })
 }
 
+// Buscar todos os atendimentos
 export const getAtendimentos = async (req: Request, res: Response) => {
   try {
     const atendimentos = await prisma.atendimento.findMany({
@@ -35,6 +37,7 @@ export const getAtendimentos = async (req: Request, res: Response) => {
   }
 }
 
+// Buscar atendimento por ID
 export const getAtendimentoById = async (req: Request, res: Response) => {
   const { id } = req.params
   try {
@@ -46,11 +49,16 @@ export const getAtendimentoById = async (req: Request, res: Response) => {
   }
 }
 
+// Criar novo atendimento
 export const createAtendimento = async (req: Request, res: Response) => {
-  const { descricao, obs, finalizado, usuId, pacId } = req.body
+  let { descricao, obs, finalizado, usuId, pacId } = req.body
   const userId = getUserIdFromReq(req)
 
-  if (!userId) return res.status(401).json({ error: 'Usuário não autenticado' }) // ← NOVA CHECAGEM
+  if (!userId) return res.status(401).json({ error: 'Usuário não autenticado' })
+
+  // Converte IDs para número
+  usuId = Number(usuId)
+  pacId = Number(pacId)
 
   try {
     const novoAtendimento = await prisma.atendimento.create({
@@ -60,7 +68,7 @@ export const createAtendimento = async (req: Request, res: Response) => {
         finalizado: finalizado ?? false,
         usuId,
         pacId,
-        createdBy: userId, 
+        createdBy: userId,
         createdOn: new Date()
       }
     })
@@ -69,16 +77,18 @@ export const createAtendimento = async (req: Request, res: Response) => {
       atendimento: novoAtendimento
     })
   } catch (error: any) {
+    console.error('ERRO CREATE ATENDIMENTO:', error)
     res.status(500).json({ error: error.message, details: error })
   }
 }
 
+// Atualizar atendimento existente
 export const updateAtendimento = async (req: Request, res: Response) => {
   const { id } = req.params
-  const { descricao, obs, finalizado, usuId, pacId } = req.body
+  let { descricao, obs, finalizado, usuId, pacId } = req.body
   const userId = getUserIdFromReq(req)
 
-  if (!userId) return res.status(401).json({ error: 'Usuário não autenticado' }) 
+  if (!userId) return res.status(401).json({ error: 'Usuário não autenticado' })
 
   try {
     const atendimentoExistente = await findAtendimentoById(Number(id))
@@ -86,14 +96,14 @@ export const updateAtendimento = async (req: Request, res: Response) => {
 
     const dataToUpdate: Prisma.AtendimentoUpdateInput = {
       modifiedOn: new Date(),
-      modifiedBy: userId 
+      modifiedBy: userId
     }
 
     if (descricao !== undefined) dataToUpdate.descricao = descricao
     if (obs !== undefined) dataToUpdate.obs = obs || null
     if (finalizado !== undefined) dataToUpdate.finalizado = finalizado
-    if (usuId !== undefined) dataToUpdate.usuario = { connect: { id: usuId } }
-    if (pacId !== undefined) dataToUpdate.paciente = { connect: { id: pacId } }
+    if (usuId !== undefined) dataToUpdate.usuario = { connect: { id: Number(usuId) } }
+    if (pacId !== undefined) dataToUpdate.paciente = { connect: { id: Number(pacId) } }
 
     const atendimentoAtualizado = await prisma.atendimento.update({
       where: { id: Number(id) },
@@ -106,7 +116,7 @@ export const updateAtendimento = async (req: Request, res: Response) => {
   }
 }
 
-
+// Deletar atendimento
 export const deleteAtendimento = async (req: Request, res: Response) => {
   const { id } = req.params
   try {

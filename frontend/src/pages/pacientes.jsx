@@ -14,6 +14,8 @@ export const Pacientes = () => {
     const [dataNasc, setDataNasc] = useState('')
     const [respId, setRespId] = useState('')
 
+    const [erros, setErros] = useState({})
+
     const carregarPacientes = async () => {
         try {
             const data = await fetchPacientes()
@@ -49,6 +51,7 @@ export const Pacientes = () => {
             setRespId('')
             setPacienteSelecionado(null)
         }
+        setErros({})
         setModalAberto(true)
     }
 
@@ -57,12 +60,25 @@ export const Pacientes = () => {
         setDataNasc('')
         setRespId('')
         setPacienteSelecionado(null)
+        setErros({})
         setModalAberto(false)
     }
 
+    const validarCampos = () => {
+        const novosErros = {}
+        if (!nome.trim()) novosErros.nome = 'Nome é obrigatório'
+        if (!dataNasc) novosErros.dataNasc = 'Data de nascimento é obrigatória'
+        return novosErros
+    }
+
     const salvarPaciente = async () => {
-        if (!nome || !respId) return
-        const pacienteData = { nome, dataNasc, respId }
+        const validacao = validarCampos()
+        if (Object.keys(validacao).length > 0) {
+            setErros(validacao)
+            return
+        }
+
+        const pacienteData = { nome, dataNasc, respId: respId || null }
         try {
             if (pacienteSelecionado) {
                 await atualizarPaciente(pacienteSelecionado.id, pacienteData)
@@ -78,7 +94,9 @@ export const Pacientes = () => {
 
     return (
         <div className="p-6">
-            <h1 className="text-2xl font-semibold mb-4 text-center">Pacientes</h1>
+            <h1 className="text-2xl font-semibold mb-4 text-center text-textPrimary dark:text-gray-200">
+                Pacientes
+            </h1>
 
             <div className="max-w-4xl mx-auto flex justify-end mb-6">
                 <button
@@ -90,7 +108,7 @@ export const Pacientes = () => {
             </div>
 
             {/* Cabeçalho */}
-            <div className="max-w-4xl mx-auto grid grid-cols-[80px_300px_200px_150px] gap-4 px-3 py-2 font-semibold bg-gray-100 dark:bg-gray-700 rounded-t">
+            <div className="max-w-4xl mx-auto grid grid-cols-[80px_300px_200px_100px] gap-4 px-3 py-2 font-semibold bg-gray-100 dark:bg-gray-700 rounded-t">
                 <span>Código</span>
                 <span>Nome</span>
                 <span>Data de Nascimento</span>
@@ -120,32 +138,37 @@ export const Pacientes = () => {
                 ))}
             </ul>
 
-
-
-
+            {/* Modal */}
             <Modal
                 isOpen={modalAberto}
                 title={pacienteSelecionado ? 'Editar Paciente' : 'Novo Paciente'}
                 onClose={fecharModal}
             >
+                {erros.nome && <span className="text-red-500 text-sm mb-1 block">{erros.nome}</span>}
                 <input
                     type="text"
                     value={nome}
                     onChange={(e) => setNome(e.target.value)}
                     placeholder="Nome completo"
-                    className="border rounded-md w-full p-2 mb-2 dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:border-blue-500 focus:ring focus:ring-blue-200 dark:focus:ring-blue-500 transition"
+                    className={`border rounded-md w-full p-2 mb-2 dark:bg-gray-700 dark:text-white
+                        ${erros.nome ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}
+                        focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors`}
                 />
+
+                {erros.dataNasc && <span className="text-red-500 text-sm mb-1 block">{erros.dataNasc}</span>}
                 <input
                     type="date"
                     value={dataNasc}
                     onChange={(e) => setDataNasc(e.target.value)}
-                    placeholder="Data de Nascimento"
-                    className="border rounded-md w-full p-2 mb-2 dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:border-blue-500 focus:ring focus:ring-blue-200 dark:focus:ring-blue-500 transition"
+                    className={`border rounded-md w-full p-2 mb-2 bg-white dark:bg-gray-700 text-textPrimary dark:text-white
+                        ${erros.dataNasc ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}
+                        focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors`}
                 />
+
                 <select
                     value={respId}
                     onChange={(e) => setRespId(Number(e.target.value))}
-                    className="border rounded-md w-full p-2 mb-4 dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:border-blue-500 focus:ring focus:ring-blue-200 dark:focus:ring-blue-500 transition"
+                    className="border rounded-md w-full p-2 mb-4 dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
                 >
                     <option value="">Selecione o responsável</option>
                     {usuarios.map((u) => (

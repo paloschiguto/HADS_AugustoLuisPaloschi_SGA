@@ -7,14 +7,46 @@ import { useTheme } from '../hooks/ThemeContext'
 export function Login() {
   const { login } = useAuth()
   const navigate = useNavigate()
+  const { theme, toggleTheme } = useTheme()
+
   const [email, setEmail] = useState('')
   const [senha, setSenha] = useState('')
   const [erro, setErro] = useState('')
   const [modalAberta, setModalAberta] = useState(false)
-  const { theme, toggleTheme } = useTheme()
+
+  const [erroEmail, setErroEmail] = useState('')
+  const [erroSenha, setErroSenha] = useState('')
+
+  const validarCampos = () => {
+    let valido = true
+
+    if (!email.trim()) {
+      setErroEmail('Email é obrigatório')
+      valido = false
+    } else if (!/\S+@\S+\.\S+/.test(email)) {
+      setErroEmail('Email inválido')
+      valido = false
+    } else {
+      setErroEmail('')
+    }
+
+    if (!senha.trim()) {
+      setErroSenha('Senha é obrigatória')
+      valido = false
+    } else if (senha.length < 6 || !/[A-Za-z]/.test(senha) || !/\d/.test(senha)) {
+      setErroSenha('Senha deve ter pelo menos 6 caracteres, letras e números')
+      valido = false
+    } else {
+      setErroSenha('')
+    }
+
+    return valido
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    if (!validarCampos()) return
+
     try {
       await login(email, senha)
       navigate('/dashboard')
@@ -22,6 +54,13 @@ export function Login() {
       setErro(err.response?.data?.error || 'Erro ao tentar fazer login')
     }
   }
+
+  const inputClass = (erroCampo) =>
+    `w-full border rounded-lg px-3 py-2 mb-1 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
+     ${erroCampo ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}
+     focus:outline-none focus:ring-2 focus:ring-blue-500 transition`
+
+  const erroClass = 'text-red-500 text-sm mb-2 block'
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-100 dark:bg-gray-900 transition-colors">
@@ -34,16 +73,16 @@ export function Login() {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4" noValidate>
           <div>
             <label className="block text-gray-700 dark:text-gray-300 mb-1">Email</label>
             <input
               type="email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              required
+              onChange={(e) => { setEmail(e.target.value); setErroEmail('') }}
+              className={inputClass(erroEmail)}
             />
+            {erroEmail && <span className={erroClass}>{erroEmail}</span>}
           </div>
 
           <div>
@@ -51,10 +90,10 @@ export function Login() {
             <input
               type="password"
               value={senha}
-              onChange={(e) => setSenha(e.target.value)}
-              className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              required
+              onChange={(e) => { setSenha(e.target.value); setErroSenha('') }}
+              className={inputClass(erroSenha)}
             />
+            {erroSenha && <span className={erroClass}>{erroSenha}</span>}
           </div>
 
           <button
