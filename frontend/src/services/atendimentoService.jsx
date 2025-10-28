@@ -2,8 +2,11 @@ import axios from 'axios'
 
 const API_URL = 'http://localhost:3000/SGA'
 
-export const fetchAtendimentos = async () => {
+export const fetchAtendimentos = async (permissoes) => {
   const { data } = await axios.get(`${API_URL}/atendimentos`, { withCredentials: true })
+  if (permissoes && permissoes.length) {
+    return data.filter(at => permissoes.includes('atendimento')) 
+  }
   return data
 }
 

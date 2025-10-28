@@ -15,7 +15,9 @@ model TipoDeUsuario {
   createdOn   DateTime @default(now())
   modifiedBy  Int?
   modifiedOn  DateTime?
+
   usuarios    Usuario[]
+  permissoes  Permissao[] @relation("TipoPermissoes")
 }
 
 // Usuários do sistema
@@ -106,4 +108,11 @@ model PasswordReset {
   created_on DateTime @default(now())
 
   usuario    Usuario  @relation(fields: [usuId], references: [id], onDelete: Cascade)
+}
+
+// Permissões
+model Permissao {
+  id          Int       @id @default(autoincrement())
+  nome        String    @unique
+  tipos       TipoDeUsuario[] @relation("TipoPermissoes")
 }

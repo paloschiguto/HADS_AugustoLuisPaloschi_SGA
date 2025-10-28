@@ -19,6 +19,21 @@ export const findMedicAtendById = async (id: number) => {
 }
 
 export const getMedicamentosAtend = async (req: Request, res: Response) => {
+  const token = req.cookies?.token
+  if (!token) return res.status(401).json({ error: 'Usuário não autenticado' })
+
+  let permissoes: string[] = []
+  try {
+    const payload = jwt.verify(token, process.env.JWT_SECRET!) as { permissoes: string[] }
+    permissoes = payload.permissoes
+  } catch {
+    return res.status(401).json({ error: 'Token inválido' })
+  }
+
+  if (!permissoes.includes('Atendimento')) {
+    return res.status(403).json({ error: 'Usuário não possui permissão para visualizar medicamentos' })
+  }
+
   try {
     const registros = await prisma.medicamentosAtend.findMany({
       include: { atendimento: true, medicamento: true }
@@ -29,6 +44,7 @@ export const getMedicamentosAtend = async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Erro ao buscar vínculos de medicamentos em atendimentos' })
   }
 }
+
 
 export const getMedicamentoAtendById = async (req: Request, res: Response) => {
   const { id } = req.params

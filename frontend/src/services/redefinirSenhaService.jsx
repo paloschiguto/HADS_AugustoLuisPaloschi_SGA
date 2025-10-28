@@ -5,11 +5,21 @@ const api = axios.create({
 })
 
 export const solicitarCodigo = async (email) => {
-  const res = await api.post('/solicitar', { email })
-  return res.data
+  try {
+    const res = await api.post('/solicitar', { email })
+    return res.data
+  } catch (err) {
+    console.error('Erro ao solicitar código:', err)
+    throw err
+  }
 }
 
 export const redefinirSenha = async (email, codigo, novaSenha) => {
-  const res = await api.post('/redefinir', { email, codigo, novaSenha })
-  return res.data
+  try {
+    const res = await api.post('/redefinir', { email, codigo, novaSenha })
+    return res.data
+  } catch (err) {
+    console.error('Erro ao redefinir senha:', err)
+    throw err
+  }
 }

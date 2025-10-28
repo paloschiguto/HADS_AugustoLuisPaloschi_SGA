@@ -48,12 +48,12 @@ export const Atendimentos = () => {
   const abrirModal = (atendimento = null) => {
     if (atendimento) {
       setAtendimentoSelecionado(atendimento)
-      setUsuarioId(atendimento.usuario?.id || '')
-      setPacienteId(atendimento.paciente?.id || '')
+      setUsuarioId(atendimento.usuId || '')
+      setPacienteId(atendimento.pacId || '')
       setDescricao(atendimento.descricao || '')
       setObs(atendimento.obs || '')
       setFinalizado(atendimento.finalizado || false)
-      setMedicamentosIds(atendimento.medicamentos?.map(m => m.medId) || [])
+      setMedicamentosIds(atendimento.medicamentos?.map(m => m) || [])
     } else {
       setAtendimentoSelecionado(null)
       setUsuarioId('')
@@ -96,6 +96,7 @@ export const Atendimentos = () => {
       finalizado,
       medicamentos: medicamentosIds
     }
+
 
     try {
       if (atendimentoSelecionado) {

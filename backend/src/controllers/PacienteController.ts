@@ -3,12 +3,11 @@ import { prisma } from '../prismaClient'
 import { Prisma } from '@prisma/client'
 import jwt from 'jsonwebtoken'
 
-const getUserIdFromReq = (req: Request): number | null => {
+const getUserFromReq = (req: Request) => {
   const token = req.cookies?.token
   if (!token) return null
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { id: number }
-    return decoded.id
+    return jwt.verify(token, process.env.JWT_SECRET!) as { id: number, permissoes: string[] }
   } catch {
     return null
   }
@@ -19,6 +18,10 @@ export const findPacienteById = async (id: number) => {
 }
 
 export const getPacientes = async (req: Request, res: Response) => {
+  const user = getUserFromReq(req)
+  if (!user) return res.status(401).json({ error: 'Usuário não autenticado' })
+  if (!user.permissoes.includes('Paciente')) return res.status(403).json({ error: 'Sem permissão para visualizar pacientes' })
+
   try {
     const pacientes = await prisma.paciente.findMany({
       include: { responsavel: true }
@@ -31,6 +34,10 @@ export const getPacientes = async (req: Request, res: Response) => {
 }
 
 export const getPacienteById = async (req: Request, res: Response) => {
+  const user = getUserFromReq(req)
+  if (!user) return res.status(401).json({ error: 'Usuário não autenticado' })
+  if (!user.permissoes.includes('Paciente')) return res.status(403).json({ error: 'Sem permissão para visualizar pacientes' })
+
   const { id } = req.params
   try {
     const paciente = await findPacienteById(Number(id))
@@ -42,9 +49,11 @@ export const getPacienteById = async (req: Request, res: Response) => {
 }
 
 export const createPaciente = async (req: Request, res: Response) => {
+  const user = getUserFromReq(req)
+  if (!user) return res.status(401).json({ error: 'Usuário não autenticado' })
+  if (!user.permissoes.includes('Paciente')) return res.status(403).json({ error: 'Sem permissão para criar pacientes' })
+
   const { nome, dataNasc, respId } = req.body
-  const userId = getUserIdFromReq(req)
-  if (!userId) return res.status(401).json({ error: 'Usuário não autenticado' })
 
   try {
     const novoPaciente = await prisma.paciente.create({
@@ -52,7 +61,7 @@ export const createPaciente = async (req: Request, res: Response) => {
         nome,
         dataNasc: dataNasc ? new Date(dataNasc) : null,
         respId: respId || null,
-        createdBy: userId,
+        createdBy: user.id,
         createdOn: new Date()
       }
     })
@@ -64,16 +73,18 @@ export const createPaciente = async (req: Request, res: Response) => {
 }
 
 export const updatePaciente = async (req: Request, res: Response) => {
+  const user = getUserFromReq(req)
+  if (!user) return res.status(401).json({ error: 'Usuário não autenticado' })
+  if (!user.permissoes.includes('Paciente')) return res.status(403).json({ error: 'Sem permissão para atualizar pacientes' })
+
   const { id } = req.params
   const { nome, dataNasc, respId } = req.body
-  const userId = getUserIdFromReq(req)
-  if (!userId) return res.status(401).json({ error: 'Usuário não autenticado' })
 
   try {
     const pacienteExistente = await findPacienteById(Number(id))
     if (!pacienteExistente) return res.status(404).json({ error: 'Paciente não encontrado' })
 
-    const dataToUpdate: Prisma.PacienteUpdateInput = { modifiedOn: new Date(), modifiedBy: userId }
+    const dataToUpdate: Prisma.PacienteUpdateInput = { modifiedOn: new Date(), modifiedBy: user.id }
 
     if (nome !== undefined) dataToUpdate.nome = nome
     if (dataNasc !== undefined) dataToUpdate.dataNasc = dataNasc ? new Date(dataNasc) : null
@@ -93,6 +104,10 @@ export const updatePaciente = async (req: Request, res: Response) => {
 }
 
 export const deletePaciente = async (req: Request, res: Response) => {
+  const user = getUserFromReq(req)
+  if (!user) return res.status(401).json({ error: 'Usuário não autenticado' })
+  if (!user.permissoes.includes('Paciente')) return res.status(403).json({ error: 'Sem permissão para deletar pacientes' })
+
   const { id } = req.params
   try {
     const pacienteExistente = await findPacienteById(Number(id))

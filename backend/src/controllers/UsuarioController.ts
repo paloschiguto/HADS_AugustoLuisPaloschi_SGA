@@ -4,19 +4,18 @@ import bcrypt from 'bcryptjs'
 import { Prisma } from '@prisma/client'
 import jwt from 'jsonwebtoken'
 
-const getUserIdFromReq = (req: Request): number | null => {
+const getUserFromReq = (req: Request) => {
   const token = req.cookies?.token
   if (!token) return null
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { id: number }
-    return decoded.id
+    return jwt.verify(token, process.env.JWT_SECRET!) as { id: number, permissoes: string[] }
   } catch {
     return null
   }
 }
 
 export const findUsuarioById = async (id: number) => {
-  return prisma.usuario.findUnique({ where: { id } })
+  return prisma.usuario.findUnique({ where: { id }, include: { tipo: true } })
 }
 
 export const getUsuarios = async (_req: Request, res: Response) => {
@@ -41,37 +40,40 @@ export const getUsuarioById = async (req: Request, res: Response) => {
 }
 
 export const createUsuario = async (req: Request, res: Response) => {
-  const { nome, email, senha, tpUsuId } = req.body
-  const userId = getUserIdFromReq(req)
-  if (!userId) return res.status(401).json({ error: 'Usuário não autenticado' })
+  const user = getUserFromReq(req)
+  if (!user) return res.status(401).json({ error: 'Usuário não autenticado' })
+  if (!user.permissoes.includes('Usuário')) return res.status(403).json({ error: 'Sem permissão para criar usuários' })
 
+  const { nome, email, senha, tpUsuId } = req.body
   try {
     const senhaForte = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/.test(senha)
     if (!senhaForte) return res.status(400).json({ error: 'A senha deve ter no mínimo 8 caracteres, com letras e números' })
 
     const senhaHash = await bcrypt.hash(senha, 10)
     const novoUsuario = await prisma.usuario.create({
-      data: { nome, email, senha: senhaHash, tpUsuId, createdBy: userId, createdOn: new Date() }
+      data: { nome, email, senha: senhaHash, tpUsuId, createdBy: user.id, createdOn: new Date() },
+      include: { tipo: true }
     })
     res.json(novoUsuario)
   } catch (error: any) {
     if (error.code === 'P2002') return res.status(400).json({ error: 'Email já cadastrado' })
-    console.error('ERRO CREATE USUARIO:', error)
     res.status(500).json({ error: error.message, details: error })
   }
 }
 
 export const updateUsuario = async (req: Request, res: Response) => {
+  const user = getUserFromReq(req)
+  if (!user) return res.status(401).json({ error: 'Usuário não autenticado' })
+  if (!user.permissoes.includes('Usuário')) return res.status(403).json({ error: 'Sem permissão para atualizar usuários' })
+
   const { id } = req.params
   const { nome, email, senha, tpUsuId } = req.body
-  const userId = getUserIdFromReq(req)
-  if (!userId) return res.status(401).json({ error: 'Usuário não autenticado' })
 
   try {
     const usuarioExistente = await findUsuarioById(Number(id))
     if (!usuarioExistente) return res.status(404).json({ error: 'Usuário não encontrado' })
 
-    const dataToUpdate: Prisma.UsuarioUpdateInput = { modifiedOn: new Date(), modifiedBy: userId }
+    const dataToUpdate: Prisma.UsuarioUpdateInput = { modifiedOn: new Date(), modifiedBy: user.id }
     if (nome !== undefined) dataToUpdate.nome = nome
     if (email !== undefined) dataToUpdate.email = email
     if (tpUsuId !== undefined) dataToUpdate.tipo = { connect: { id: tpUsuId } }
@@ -84,7 +86,8 @@ export const updateUsuario = async (req: Request, res: Response) => {
 
     const usuarioAtualizado = await prisma.usuario.update({
       where: { id: Number(id) },
-      data: dataToUpdate
+      data: dataToUpdate,
+      include: { tipo: true }
     })
     res.json(usuarioAtualizado)
   } catch (error: any) {
@@ -93,6 +96,10 @@ export const updateUsuario = async (req: Request, res: Response) => {
 }
 
 export const deleteUsuario = async (req: Request, res: Response) => {
+  const user = getUserFromReq(req)
+  if (!user) return res.status(401).json({ error: 'Usuário não autenticado' })
+  if (!user.permissoes.includes('Usuário')) return res.status(403).json({ error: 'Sem permissão para deletar usuários' })
+
   const { id } = req.params
   try {
     const usuario = await findUsuarioById(Number(id))

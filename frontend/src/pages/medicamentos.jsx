@@ -144,22 +144,22 @@ export const Medicamentos = () => {
                 <input
                     type="text"
                     value={descricao}
-                    onChange={(e) => setDescricao(e.target.value)}
+                    onChange={(e) => { setDescricao(e.target.value); setErros({ ...erros, descricao: '' }) }}
                     placeholder="Descrição"
                     className={`border rounded-md w-full p-2 mb-4 bg-white dark:bg-gray-700 text-textPrimary dark:text-gray-100
-                        ${erros.descricao ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}
-                        focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors`}
+            ${erros.descricao ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}
+            focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors`}
                 />
 
                 {erros.dosagem && <span className="text-red-500 text-sm mb-1 block">{erros.dosagem}</span>}
                 <input
                     type="text"
                     value={dosagem}
-                    onChange={(e) => setDosagem(e.target.value)}
+                    onChange={(e) => { setDosagem(e.target.value); setErros({ ...erros, dosagem: '' }) }}
                     placeholder="Dosagem"
                     className={`border rounded-md w-full p-2 mb-4 bg-white dark:bg-gray-700 text-textPrimary dark:text-gray-100
-                        ${erros.dosagem ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}
-                        focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors`}
+            ${erros.dosagem ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}
+            focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors`}
                 />
 
                 <div className="flex justify-between items-center">

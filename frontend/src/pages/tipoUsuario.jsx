@@ -1,13 +1,16 @@
 import { useEffect, useState } from 'react'
+import Select from 'react-select'
 import { Pencil } from 'lucide-react'
 import { useAuth } from '../services/authContext'
-import { fetchTipos, criarTipo, atualizarTipo, excluirTipo } from '../services/tipoUsuarioService'
+import { fetchTipos, criarTipo, atualizarTipo, excluirTipo, fetchPermissoes } from '../services/tipoUsuarioService'
 import Modal from '../components/modal'
 
 export const TiposUsuario = () => {
   const { user } = useAuth()
   const [tipos, setTipos] = useState([])
+  const [permissoes, setPermissoes] = useState([])
   const [descricao, setDescricao] = useState('')
+  const [permissoesIds, setPermissoesIds] = useState([])
   const [tipoSelecionado, setTipoSelecionado] = useState(null)
   const [modalAberto, setModalAberto] = useState(false)
   const [erroDescricao, setErroDescricao] = useState('')
@@ -17,17 +20,25 @@ export const TiposUsuario = () => {
     setTipos(data)
   }
 
+  const carregarPermissoes = async () => {
+    const data = await fetchPermissoes()
+    setPermissoes(data)
+  }
+
   useEffect(() => {
     carregarTipos()
+    carregarPermissoes()
   }, [])
 
   const abrirModal = (tipo = null) => {
     if (tipo) {
       setDescricao(tipo.descricao)
       setTipoSelecionado(tipo)
+      setPermissoesIds(tipo.permissoes?.map(p => p.id) || [])
     } else {
       setDescricao('')
       setTipoSelecionado(null)
+      setPermissoesIds([])
     }
     setErroDescricao('')
     setModalAberto(true)
@@ -36,6 +47,7 @@ export const TiposUsuario = () => {
   const fecharModal = () => {
     setDescricao('')
     setTipoSelecionado(null)
+    setPermissoesIds([])
     setErroDescricao('')
     setModalAberto(false)
   }
@@ -48,9 +60,9 @@ export const TiposUsuario = () => {
 
     try {
       if (tipoSelecionado) {
-        await atualizarTipo(tipoSelecionado.id, { descricao, modifiedBy: user.id })
+        await atualizarTipo(tipoSelecionado.id, { descricao, permissoesIds })
       } else {
-        await criarTipo({ descricao, createdBy: user.id })
+        await criarTipo({ descricao, permissoesIds })
       }
       await carregarTipos()
       fecharModal()
@@ -113,6 +125,42 @@ export const TiposUsuario = () => {
           className={`border rounded-md w-full p-2 mb-4 dark:bg-gray-700 dark:text-white
             ${erroDescricao ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}
             focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors`}
+        />
+
+        <Select
+          isMulti
+          options={permissoes.map(p => ({ value: p.id, label: p.nome }))}
+          value={permissoes.filter(p => permissoesIds.includes(p.id)).map(p => ({ value: p.id, label: p.nome }))}
+          onChange={(selected) => setPermissoesIds(selected.map(s => s.value))}
+          placeholder="Selecione permissões..."
+          className="mb-4 text-textPrimary"
+          styles={{
+            control: (base, state) => ({
+              ...base,
+              backgroundColor: document.documentElement.classList.contains('dark') ? '#374151' : 'white',
+              borderColor: state.isFocused ? '#3B82F6' : document.documentElement.classList.contains('dark') ? '#4B5563' : '#D1D5DB',
+              boxShadow: state.isFocused ? '0 0 0 1px #3B82F6' : 'none'
+            }),
+            menu: (base) => ({ ...base, backgroundColor: document.documentElement.classList.contains('dark') ? '#1F2937' : 'white' }),
+            option: (base, state) => ({
+              ...base,
+              backgroundColor: state.isFocused ? '#3B82F6' : document.documentElement.classList.contains('dark') ? '#1F2937' : 'white',
+              color: state.isFocused ? 'white' : document.documentElement.classList.contains('dark') ? '#F9FAFB' : '#111827'
+            }),
+            multiValue: (base) => ({
+              ...base,
+              backgroundColor: document.documentElement.classList.contains('dark') ? '#4B5563' : '#E5E7EB'
+            }),
+            multiValueLabel: (base) => ({
+              ...base,
+              color: document.documentElement.classList.contains('dark') ? '#F9FAFB' : '#111827'
+            }),
+            multiValueRemove: (base) => ({
+              ...base,
+              color: document.documentElement.classList.contains('dark') ? '#F9FAFB' : '#111827',
+              ':hover': { backgroundColor: '#EF4444', color: 'white' }
+            })
+          }}
         />
 
         <div className="flex justify-between">

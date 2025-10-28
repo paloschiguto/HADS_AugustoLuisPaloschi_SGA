@@ -3,7 +3,6 @@ import { prisma } from '../prismaClient'
 import { Prisma } from '@prisma/client'
 import jwt from 'jsonwebtoken'
 
-// Função auxiliar para pegar o ID do usuário logado pelo token JWT nos cookies
 const getUserIdFromReq = (req: Request): number | null => {
   const token = req.cookies?.token
   if (!token) return null
@@ -15,13 +14,26 @@ const getUserIdFromReq = (req: Request): number | null => {
   }
 }
 
-// Função auxiliar para buscar atendimento por ID
 export const findAtendimentoById = async (id: number) => {
   return prisma.atendimento.findUnique({ where: { id } })
 }
 
-// Buscar todos os atendimentos
 export const getAtendimentos = async (req: Request, res: Response) => {
+  const token = req.cookies?.token
+  if (!token) return res.status(401).json({ error: 'Usuário não autenticado' })
+
+  let permissoes: string[] = []
+  try {
+    const payload = jwt.verify(token, process.env.JWT_SECRET!) as { permissoes: string[] }
+    permissoes = payload.permissoes
+  } catch {
+    return res.status(401).json({ error: 'Token inválido' })
+  }
+
+  if (!permissoes.includes('Atendimento')) {
+    return res.status(403).json({ error: 'Usuário não possui permissão para visualizar atendimentos' })
+  }
+
   try {
     const atendimentos = await prisma.atendimento.findMany({
       include: {
@@ -30,14 +42,13 @@ export const getAtendimentos = async (req: Request, res: Response) => {
         medicamentos: true
       }
     })
-    if (!atendimentos.length) return res.status(404).json({ error: 'Nenhum atendimento cadastrado.' })
     res.json(atendimentos)
   } catch (error) {
     res.status(500).json({ error: 'Erro ao buscar atendimentos' })
   }
 }
 
-// Buscar atendimento por ID
+
 export const getAtendimentoById = async (req: Request, res: Response) => {
   const { id } = req.params
   try {
@@ -49,7 +60,6 @@ export const getAtendimentoById = async (req: Request, res: Response) => {
   }
 }
 
-// Criar novo atendimento
 export const createAtendimento = async (req: Request, res: Response) => {
   let { descricao, obs, finalizado, usuId, pacId } = req.body
   const userId = getUserIdFromReq(req)
@@ -82,7 +92,6 @@ export const createAtendimento = async (req: Request, res: Response) => {
   }
 }
 
-// Atualizar atendimento existente
 export const updateAtendimento = async (req: Request, res: Response) => {
   const { id } = req.params
   let { descricao, obs, finalizado, usuId, pacId } = req.body
@@ -116,7 +125,6 @@ export const updateAtendimento = async (req: Request, res: Response) => {
   }
 }
 
-// Deletar atendimento
 export const deleteAtendimento = async (req: Request, res: Response) => {
   const { id } = req.params
   try {

@@ -5,27 +5,42 @@ const api = axios.create({
   withCredentials: true
 })
 
-const getAuthHeader = () => {
-  const token = localStorage.getItem('token') 
-  return { Authorization: `Bearer ${token}` }
-}
-
 export const fetchMedicamentos = async () => {
-  const res = await api.get('/medicamentos')
-  return res.data
+  try {
+    const res = await api.get('/medicamentos')
+    return res.data
+  } catch (err) {
+    console.error('Erro ao buscar medicamentos:', err)
+    return []
+  }
 }
 
 export const createMedicamento = async (medicamento) => {
-  const res = await api.post('/medicamentos', medicamento, { headers: getAuthHeader() })
-  return res.data
+  try {
+    const res = await api.post('/medicamentos', medicamento)
+    return res.data
+  } catch (err) {
+    console.error('Erro ao criar medicamento:', err)
+    throw err
+  }
 }
 
 export const atualizarMedicamento = async (id, medicamento) => {
-  const res = await api.put(`/medicamentos/${id}`, medicamento, { headers: getAuthHeader() })
-  return res.data
+  try {
+    const res = await api.put(`/medicamentos/${id}`, medicamento)
+    return res.data
+  } catch (err) {
+    console.error('Erro ao atualizar medicamento:', err)
+    throw err
+  }
 }
 
 export const excluirMedicamento = async (id) => {
-  const res = await api.delete(`/medicamentos/${id}`, { headers: getAuthHeader() })
-  return res.data
+  try {
+    const res = await api.delete(`/medicamentos/${id}`)
+    return res.data
+  } catch (err) {
+    console.error('Erro ao excluir medicamento:', err)
+    throw err
+  }
 }

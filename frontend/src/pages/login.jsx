@@ -51,7 +51,8 @@ export function Login() {
       await login(email, senha)
       navigate('/dashboard')
     } catch (err) {
-      setErro(err.response?.data?.error || 'Erro ao tentar fazer login')
+      const mensagemErro = err?.response?.data?.error || 'Erro ao tentar fazer login'
+      setErro(mensagemErro)
     }
   }
 
@@ -79,7 +80,7 @@ export function Login() {
             <input
               type="email"
               value={email}
-              onChange={(e) => { setEmail(e.target.value); setErroEmail('') }}
+              onChange={(e) => { setEmail(e.target.value); setErroEmail(''); setErro('') }}
               className={inputClass(erroEmail)}
             />
             {erroEmail && <span className={erroClass}>{erroEmail}</span>}
@@ -90,7 +91,7 @@ export function Login() {
             <input
               type="password"
               value={senha}
-              onChange={(e) => { setSenha(e.target.value); setErroSenha('') }}
+              onChange={(e) => { setSenha(e.target.value); setErroSenha(''); setErro('') }}
               className={inputClass(erroSenha)}
             />
             {erroSenha && <span className={erroClass}>{erroSenha}</span>}

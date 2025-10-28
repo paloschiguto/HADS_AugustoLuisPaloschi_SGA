@@ -25,12 +25,16 @@ export const AuthProvider = ({ children }) => {
   }, [])
 
   const login = async (email, senha) => {
-    const res = await axios.post(
-      'http://localhost:3000/SGA/login',
-      { email, senha },
-      { withCredentials: true }
-    )
-    setUser(res.data.usuario)
+    try {
+      const res = await axios.post(
+        'http://localhost:3000/SGA/login',
+        { email, senha },
+        { withCredentials: true } 
+      )
+      setUser(res.data.usuario)
+    } catch (err) {
+      throw new Error(err.response?.data?.error || 'Erro ao fazer login')
+    }
   }
 
   const logout = async () => {
