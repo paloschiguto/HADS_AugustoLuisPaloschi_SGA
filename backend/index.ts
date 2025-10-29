@@ -11,6 +11,7 @@ import loginRoutes from './src/routes/login.routes'
 import recuperarSenhaRoutes from './src/routes/recuperarSenha.routes'
 import meRoutes from './src/routes/me.routes'
 import permissaoRoutes from './src/routes/permissao.routes'
+import dashboardRoutes from './src/routes/dashboard.routes'
 import dotenv from 'dotenv'
 
 dotenv.config()
@@ -37,6 +38,7 @@ app.use(`/${api}/login`, loginRoutes)
 app.use(`/${api}/redefinirSenha`, recuperarSenhaRoutes)
 app.use(`/${api}/me`, meRoutes)
 app.use(`/${api}/permissoes`, permissaoRoutes)
+app.use(`/${api}/dashboard`, dashboardRoutes)
 
 app.get(`/${api}`, (req, res) => {
     res.send('API do SGA rodando!')

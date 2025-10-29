@@ -98,8 +98,8 @@ export const Usuarios = () => {
       if (!senha) {
         setErroSenha('Senha é obrigatória')
         valido = false
-      } else if (senha.length < 6 || !/[A-Za-z]/.test(senha) || !/\d/.test(senha)) {
-        setErroSenha('Senha deve ter pelo menos 6 caracteres, letras e números')
+      } else if (senha.length < 8 || !/[A-Za-z]/.test(senha) || !/\d/.test(senha)) {
+        setErroSenha('Senha deve ter pelo menos 8 caracteres, letras e números')
         valido = false
       } else setErroSenha('')
     }

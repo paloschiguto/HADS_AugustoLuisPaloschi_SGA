@@ -12,12 +12,15 @@ import { Atendimentos } from './pages/atendimento'
 
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth()
-
   if (loading) return <div className="p-6 text-center">Carregando...</div>
-
   return user ? children : <Navigate to="/login" />
 }
 
+function ProtectedRoute({ children, modulo }) {
+  const { user } = useAuth()
+  const permissoes = user?.permissoes || []
+  return permissoes.includes(modulo) ? children : <Navigate to="/dashboard" />
+}
 
 function App() {
   return (
@@ -26,14 +29,31 @@ function App() {
         <BrowserRouter>
           <Routes>
             <Route path="/login" element={<Login />} />
+
             <Route path="/" element={<PrivateRoute><Layout /></PrivateRoute>}>
               <Route index element={<Dashboard />} />
               <Route path="dashboard" element={<Dashboard />} />
-              <Route path="tipos-usuario" element={<TiposUsuario />} />
-              <Route path="usuarios" element={<Usuarios />} />
-              <Route path="pacientes" element={<Pacientes />} />
-              <Route path="medicamentos" element={<Medicamentos />} />
-              <Route path="atendimentos" element={<Atendimentos />} />
+
+              <Route
+                path="tipos-usuario"
+                element={<ProtectedRoute modulo="Tipo de Usuário"><TiposUsuario /></ProtectedRoute>}
+              />
+              <Route
+                path="usuarios"
+                element={<ProtectedRoute modulo="Usuário"><Usuarios /></ProtectedRoute>}
+              />
+              <Route
+                path="pacientes"
+                element={<ProtectedRoute modulo="Paciente"><Pacientes /></ProtectedRoute>}
+              />
+              <Route
+                path="medicamentos"
+                element={<ProtectedRoute modulo="Medicamento"><Medicamentos /></ProtectedRoute>}
+              />
+              <Route
+                path="atendimentos"
+                element={<ProtectedRoute modulo="Atendimento"><Atendimentos /></ProtectedRoute>}
+              />
             </Route>
           </Routes>
         </BrowserRouter>
