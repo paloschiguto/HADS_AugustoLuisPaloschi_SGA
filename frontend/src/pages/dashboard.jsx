@@ -134,9 +134,10 @@ export default function Dashboard() {
         </>
       ) : (
         <>
-          <h1 className="text-3xl font-bold text-textPrimary dark:text-gray-200">
+          <h1 className="text-3xl font-bold text-textPrimary dark:text-gray-200 mt-8 sm:mt-0">
             Olá, {user.nome.split(' ')[0]}
           </h1>
+
           <p className="text-textSecondary dark:text-gray-400">
             Dados gerais do sistema.
           </p>

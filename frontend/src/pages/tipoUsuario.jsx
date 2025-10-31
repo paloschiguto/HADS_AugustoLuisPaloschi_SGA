@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import Select from 'react-select'
 import { Pencil } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '../services/authContext'
 import { fetchTipos, criarTipo, atualizarTipo, excluirTipo, fetchPermissoes } from '../services/tipoUsuarioService'
 import Modal from '../components/modal'
@@ -14,6 +15,9 @@ export const TiposUsuario = () => {
   const [tipoSelecionado, setTipoSelecionado] = useState(null)
   const [modalAberto, setModalAberto] = useState(false)
   const [erroDescricao, setErroDescricao] = useState('')
+  const [mostrarErroModal, setMostrarErroModal] = useState(false)
+  const [mensagemErroModal, setMensagemErroModal] = useState('')
+  const [isDarkMode, setIsDarkMode] = useState(document.documentElement.classList.contains('dark'))
 
   const carregarTipos = async () => {
     const data = await fetchTipos()
@@ -28,6 +32,14 @@ export const TiposUsuario = () => {
   useEffect(() => {
     carregarTipos()
     carregarPermissoes()
+  }, [])
+
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      setIsDarkMode(document.documentElement.classList.contains('dark'))
+    })
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
+    return () => observer.disconnect()
   }, [])
 
   const abrirModal = (tipo = null) => {
@@ -73,9 +85,26 @@ export const TiposUsuario = () => {
 
   const confirmarExclusao = async () => {
     if (!tipoSelecionado) return
-    await excluirTipo(tipoSelecionado.id)
-    await carregarTipos()
-    fecharModal()
+
+    try {
+      await excluirTipo(tipoSelecionado.id)
+      await carregarTipos()
+      fecharModal()
+    } catch (err) {
+      console.error('Erro ao excluir tipo:', err)
+
+      if (err.response && err.response.status === 500) {
+        setMensagemErroModal('O tipo de usuário está vinculado em um usuário.')
+      } else {
+        setMensagemErroModal('Erro ao excluir tipo. Tente novamente mais tarde.')
+      }
+      setMostrarErroModal(true)
+    }
+  }
+
+  const fecharErroModal = () => {
+    setMostrarErroModal(false)
+    setMensagemErroModal('')
   }
 
   return (
@@ -117,6 +146,7 @@ export const TiposUsuario = () => {
         onClose={fecharModal}
       >
         {erroDescricao && <span className="text-red-500 text-sm mb-1 block">{erroDescricao}</span>}
+
         <input
           type="text"
           value={descricao}
@@ -130,36 +160,57 @@ export const TiposUsuario = () => {
         <Select
           isMulti
           options={permissoes.map(p => ({ value: p.id, label: p.nome }))}
-          value={permissoes.filter(p => permissoesIds.includes(p.id)).map(p => ({ value: p.id, label: p.nome }))}
+          value={permissoes
+            .filter(p => permissoesIds.includes(p.id))
+            .map(p => ({ value: p.id, label: p.nome }))
+          }
           onChange={(selected) => setPermissoesIds(selected.map(s => s.value))}
           placeholder="Selecione permissões..."
           className="mb-4 text-textPrimary"
           styles={{
             control: (base, state) => ({
               ...base,
-              backgroundColor: document.documentElement.classList.contains('dark') ? '#374151' : 'white',
-              borderColor: state.isFocused ? '#3B82F6' : document.documentElement.classList.contains('dark') ? '#4B5563' : '#D1D5DB',
-              boxShadow: state.isFocused ? '0 0 0 1px #3B82F6' : 'none'
+              backgroundColor: isDarkMode ? '#374151' : '#fff',
+              borderColor: state.isFocused
+                ? '#3B82F6'
+                : isDarkMode
+                  ? '#4B5563'
+                  : '#D1D5DB',
+              color: isDarkMode ? '#E5E7EB' : '#111827',
+              boxShadow: state.isFocused ? '0 0 0 1px #3B82F6' : 'none',
             }),
-            menu: (base) => ({ ...base, backgroundColor: document.documentElement.classList.contains('dark') ? '#1F2937' : 'white' }),
+            menu: (base) => ({
+              ...base,
+              backgroundColor: isDarkMode ? '#1F2937' : '#fff',
+              color: isDarkMode ? '#E5E7EB' : '#111827',
+            }),
             option: (base, state) => ({
               ...base,
-              backgroundColor: state.isFocused ? '#3B82F6' : document.documentElement.classList.contains('dark') ? '#1F2937' : 'white',
-              color: state.isFocused ? 'white' : document.documentElement.classList.contains('dark') ? '#F9FAFB' : '#111827'
+              backgroundColor: state.isFocused
+                ? '#3B82F6'
+                : isDarkMode
+                  ? '#1F2937'
+                  : '#fff',
+              color: state.isFocused
+                ? '#fff'
+                : isDarkMode
+                  ? '#F9FAFB'
+                  : '#111827',
+              cursor: 'pointer',
             }),
             multiValue: (base) => ({
               ...base,
-              backgroundColor: document.documentElement.classList.contains('dark') ? '#4B5563' : '#E5E7EB'
+              backgroundColor: isDarkMode ? '#4B5563' : '#E5E7EB',
             }),
             multiValueLabel: (base) => ({
               ...base,
-              color: document.documentElement.classList.contains('dark') ? '#F9FAFB' : '#111827'
+              color: isDarkMode ? '#F9FAFB' : '#111827',
             }),
             multiValueRemove: (base) => ({
               ...base,
-              color: document.documentElement.classList.contains('dark') ? '#F9FAFB' : '#111827',
-              ':hover': { backgroundColor: '#EF4444', color: 'white' }
-            })
+              color: isDarkMode ? '#F9FAFB' : '#111827',
+              ':hover': { backgroundColor: '#EF4444', color: 'white' },
+            }),
           }}
         />
 
@@ -188,6 +239,123 @@ export const TiposUsuario = () => {
           </div>
         </div>
       </Modal>
+
+      {/* Modal de erro (tema dinâmico) */}
+      <AnimatePresence>
+        {modalAberto && (
+          <motion.div
+            className="fixed inset-0 z-50 flex justify-center items-center"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            {/* Apenas desfoque, sem escurecer */}
+            <div className="absolute inset-0 backdrop-blur-sm"></div>
+
+            <Modal
+              isOpen={modalAberto}
+              title={tipoSelecionado ? 'Editar Tipo' : 'Novo Tipo'}
+              onClose={fecharModal}
+            >
+              {erroDescricao && <span className="text-red-500 text-sm mb-1 block">{erroDescricao}</span>}
+
+              <input
+                type="text"
+                value={descricao}
+                onChange={(e) => { setDescricao(e.target.value); setErroDescricao('') }}
+                placeholder="Descrição do tipo"
+                className={`border rounded-md w-full p-2 mb-4 dark:bg-gray-700 dark:text-white
+            ${erroDescricao ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}
+            focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors`}
+              />
+
+              <Select
+                isMulti
+                options={permissoes.map(p => ({ value: p.id, label: p.nome }))}
+                value={permissoes
+                  .filter(p => permissoesIds.includes(p.id))
+                  .map(p => ({ value: p.id, label: p.nome }))
+                }
+                onChange={(selected) => setPermissoesIds(selected.map(s => s.value))}
+                placeholder="Selecione permissões..."
+                className="mb-4 text-textPrimary"
+                styles={{
+                  control: (base, state) => ({
+                    ...base,
+                    backgroundColor: isDarkMode ? '#374151' : '#fff',
+                    borderColor: state.isFocused
+                      ? '#3B82F6'
+                      : isDarkMode
+                        ? '#4B5563'
+                        : '#D1D5DB',
+                    color: isDarkMode ? '#E5E7EB' : '#111827',
+                    boxShadow: state.isFocused ? '0 0 0 1px #3B82F6' : 'none',
+                  }),
+                  menu: (base) => ({
+                    ...base,
+                    backgroundColor: isDarkMode ? '#374151' : '#fff', // ajustado para dark mode
+                    color: isDarkMode ? '#E5E7EB' : '#111827',
+                  }),
+                  option: (base, state) => ({
+                    ...base,
+                    backgroundColor: state.isFocused
+                      ? '#3B82F6'
+                      : isDarkMode
+                        ? '#374151'
+                        : '#fff',
+                    color: state.isFocused
+                      ? '#fff'
+                      : isDarkMode
+                        ? '#E5E7EB'
+                        : '#111827',
+                    cursor: 'pointer',
+                  }),
+                  multiValue: (base) => ({
+                    ...base,
+                    backgroundColor: isDarkMode ? '#4B5563' : '#E5E7EB',
+                  }),
+                  multiValueLabel: (base) => ({
+                    ...base,
+                    color: isDarkMode ? '#F9FAFB' : '#111827',
+                  }),
+                  multiValueRemove: (base) => ({
+                    ...base,
+                    color: isDarkMode ? '#F9FAFB' : '#111827',
+                    ':hover': { backgroundColor: '#EF4444', color: 'white' },
+                  }),
+                }}
+              />
+
+              <div className="flex justify-between">
+                {tipoSelecionado && (
+                  <button
+                    onClick={confirmarExclusao}
+                    className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition"
+                  >
+                    Excluir
+                  </button>
+                )}
+                <div className="ml-auto flex gap-2">
+                  <button
+                    onClick={fecharModal}
+                    className="px-4 py-2 bg-gray-200 dark:bg-gray-600 dark:text-white rounded hover:bg-gray-300 dark:hover:bg-gray-500 transition"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={salvarTipo}
+                    className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition"
+                  >
+                    Salvar
+                  </button>
+                </div>
+              </div>
+            </Modal>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+
     </div>
   )
 }

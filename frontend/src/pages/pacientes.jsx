@@ -3,6 +3,7 @@ import { Pencil } from 'lucide-react'
 import { fetchPacientes, criarPaciente, atualizarPaciente } from '../services/pacienteService'
 import { fetchUsuarios } from '../services/usuarioService'
 import Modal from '../components/modal'
+import { motion, AnimatePresence } from 'framer-motion'
 
 export const Pacientes = () => {
   const [pacientes, setPacientes] = useState([])
@@ -15,6 +16,8 @@ export const Pacientes = () => {
   const [respId, setRespId] = useState('')
 
   const [erros, setErros] = useState({})
+  const [erroModal, setErroModal] = useState(false)
+  const [mensagemErroModal, setMensagemErroModal] = useState('')
 
   const carregarPacientes = async () => {
     try {
@@ -92,6 +95,23 @@ export const Pacientes = () => {
     }
   }
 
+  const excluirPaciente = async () => {
+    if (!pacienteSelecionado) return
+    try {
+      await fetch(`/pacientes/${pacienteSelecionado.id}`, { method: 'DELETE' })
+      await carregarPacientes()
+      fecharModal()
+    } catch (err) {
+      setMensagemErroModal('Não foi possível excluir o paciente.')
+      setErroModal(true)
+    }
+  }
+
+  const fecharErroModal = () => {
+    setErroModal(false)
+    setMensagemErroModal('')
+  }
+
   return (
     <div className="p-6">
       <h1 className="text-2xl font-semibold mb-4 text-center text-textPrimary dark:text-gray-200">
@@ -138,61 +158,75 @@ export const Pacientes = () => {
         ))}
       </ul>
 
-      {/* Modal */}
-      <Modal
-        isOpen={modalAberto}
-        title={pacienteSelecionado ? 'Editar Paciente' : 'Novo Paciente'}
-        onClose={fecharModal}
-      >
-        {erros.nome && <span className="text-red-500 text-sm mb-1 block">{erros.nome}</span>}
-        <input
-          type="text"
-          value={nome}
-          onChange={(e) => { setNome(e.target.value); setErros({ ...erros, nome: '' }) }}
-          placeholder="Nome completo"
-          className={`border rounded-md w-full p-2 mb-2 dark:bg-gray-700 dark:text-white
-            ${erros.nome ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}
-            focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors`}
-        />
+      {/* Modal de cadastro/alteração */}
+      <AnimatePresence>
+        {modalAberto && (
+          <>
+            {/* Fundo desfocado */}
+            <motion.div
+              className="fixed inset-0 backdrop-blur-sm z-40"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            />
+            <Modal
+              isOpen={modalAberto}
+              title={pacienteSelecionado ? 'Editar Paciente' : 'Novo Paciente'}
+              onClose={fecharModal}
+            >
+              {erros.nome && <span className="text-red-500 text-sm mb-1 block">{erros.nome}</span>}
+              <input
+                type="text"
+                value={nome}
+                onChange={(e) => { setNome(e.target.value); setErros({ ...erros, nome: '' }) }}
+                placeholder="Nome completo"
+                className={`border rounded-md w-full p-2 mb-2 dark:bg-gray-700 dark:text-white
+                  ${erros.nome ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}
+                  focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors`}
+              />
 
-        {erros.dataNasc && <span className="text-red-500 text-sm mb-1 block">{erros.dataNasc}</span>}
-        <input
-          type="date"
-          value={dataNasc}
-          onChange={(e) => { setDataNasc(e.target.value); setErros({ ...erros, dataNasc: '' }) }}
-          className={`border rounded-md w-full p-2 mb-2 bg-white dark:bg-gray-700 text-textPrimary dark:text-white
-            ${erros.dataNasc ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}
-            focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors`}
-        />
+              {erros.dataNasc && <span className="text-red-500 text-sm mb-1 block">{erros.dataNasc}</span>}
+              <input
+                type="date"
+                value={dataNasc}
+                onChange={(e) => { setDataNasc(e.target.value); setErros({ ...erros, dataNasc: '' }) }}
+                className={`border rounded-md w-full p-2 mb-2 bg-white dark:bg-gray-700 text-textPrimary dark:text-white
+                  ${erros.dataNasc ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}
+                  focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors`}
+              />
 
-        <select
-          value={respId}
-          onChange={(e) => setRespId(Number(e.target.value))}
-          className="border rounded-md w-full p-2 mb-4 dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
-        >
-          <option value="">Selecione o responsável</option>
-          {usuarios.map((u) => (
-            <option key={u.id} value={u.id}>
-              {u.nome}
-            </option>
-          ))}
-        </select>
+              <select
+                value={respId}
+                onChange={(e) => setRespId(Number(e.target.value))}
+                className="border rounded-md w-full p-2 mb-4 dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+              >
+                <option value="">Selecione o responsável</option>
+                {usuarios.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.nome}
+                  </option>
+                ))}
+              </select>
 
-        <div className="flex justify-end gap-2">
-          <button
-            onClick={fecharModal}
-            className="px-4 py-2 bg-gray-200 dark:bg-gray-600 dark:text-white rounded hover:bg-gray-300 dark:hover:bg-gray-500 transition"
-          >
-            Cancelar
-          </button>
-          <button
-            onClick={salvarPaciente}
-            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition"
-          >
-            Salvar
-          </button>
-        </div>
-      </Modal>
+              <div className="flex justify-end gap-2">
+                <button
+                  onClick={fecharModal}
+                  className="px-4 py-2 bg-gray-200 dark:bg-gray-600 dark:text-white rounded hover:bg-gray-300 dark:hover:bg-gray-500 transition"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={salvarPaciente}
+                  className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition"
+                >
+                  Salvar
+                </button>
+              </div>
+            </Modal>
+          </>
+        )}
+      </AnimatePresence>
+
     </div>
   )
 }

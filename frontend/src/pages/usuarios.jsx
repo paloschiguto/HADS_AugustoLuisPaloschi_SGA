@@ -8,12 +8,16 @@ import {
 } from '../services/usuarioService'
 import Modal from '../components/modal'
 import { fetchTipos } from '../services/tipoUsuarioService'
+import { motion, AnimatePresence } from 'framer-motion'
 
 export const Usuarios = () => {
   const [usuarios, setUsuarios] = useState([])
   const [tipos, setTipos] = useState([])
   const [usuarioSelecionado, setUsuarioSelecionado] = useState(null)
   const [modalAberto, setModalAberto] = useState(false)
+  const [erroModal, setErroModal] = useState(false)
+  const [mensagemErroModal, setMensagemErroModal] = useState('')
+  const [isDarkMode, setIsDarkMode] = useState(document.documentElement.classList.contains('dark'))
 
   const [nome, setNome] = useState('')
   const [email, setEmail] = useState('')
@@ -38,6 +42,14 @@ export const Usuarios = () => {
   useEffect(() => {
     carregarUsuarios()
     carregarTipos()
+  }, [])
+
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      setIsDarkMode(document.documentElement.classList.contains('dark'))
+    })
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
+    return () => observer.disconnect()
   }, [])
 
   const abrirModal = (usuario = null) => {
@@ -75,58 +87,48 @@ export const Usuarios = () => {
 
   const validarCampos = () => {
     let valido = true
-
-    if (!nome.trim()) {
-      setErroNome('Nome é obrigatório')
-      valido = false
-    } else setErroNome('')
-
-    if (!email.trim()) {
-      setErroEmail('Email é obrigatório')
-      valido = false
-    } else if (!/\S+@\S+\.\S+/.test(email)) {
-      setErroEmail('Email inválido')
-      valido = false
-    } else setErroEmail('')
-
-    if (!tpUsuId) {
-      setErroTipo('Selecione um tipo de usuário')
-      valido = false
-    } else setErroTipo('')
-
+    if (!nome.trim()) { setErroNome('Nome é obrigatório'); valido = false } else setErroNome('')
+    if (!email.trim()) { setErroEmail('Email é obrigatório'); valido = false }
+    else if (!/\S+@\S+\.\S+/.test(email)) { setErroEmail('Email inválido'); valido = false } else setErroEmail('')
+    if (!tpUsuId) { setErroTipo('Selecione um tipo de usuário'); valido = false } else setErroTipo('')
     if (!usuarioSelecionado) {
-      if (!senha) {
-        setErroSenha('Senha é obrigatória')
-        valido = false
-      } else if (senha.length < 8 || !/[A-Za-z]/.test(senha) || !/\d/.test(senha)) {
-        setErroSenha('Senha deve ter pelo menos 8 caracteres, letras e números')
-        valido = false
+      if (!senha) { setErroSenha('Senha é obrigatória'); valido = false }
+      else if (senha.length < 8 || !/[A-Za-z]/.test(senha) || !/\d/.test(senha)) {
+        setErroSenha('Senha deve ter pelo menos 8 caracteres, letras e números'); valido = false
       } else setErroSenha('')
     }
-
     return valido
   }
 
   const salvarUsuario = async () => {
     if (!validarCampos()) return
-
     const usuarioData = { nome, email, senha, tpUsuId }
-
-    if (usuarioSelecionado) {
-      await atualizarUsuario(usuarioSelecionado.id, usuarioData)
-    } else {
-      await createUsuario(usuarioData)
+    try {
+      if (usuarioSelecionado) await atualizarUsuario(usuarioSelecionado.id, usuarioData)
+      else await createUsuario(usuarioData)
+      await carregarUsuarios()
+      fecharModal()
+    } catch (err) {
+      setMensagemErroModal('Erro ao salvar usuário. Tente novamente.')
+      setErroModal(true)
     }
-
-    await carregarUsuarios()
-    fecharModal()
   }
 
   const confirmarExclusao = async () => {
     if (!usuarioSelecionado) return
-    await excluirUsuario(usuarioSelecionado.id)
-    await carregarUsuarios()
-    fecharModal()
+    try {
+      await excluirUsuario(usuarioSelecionado.id)
+      await carregarUsuarios()
+      fecharModal()
+    } catch (err) {
+      setMensagemErroModal('O usuário está vinculado a um atendimento e não pode ser excluído.')
+      setErroModal(true)
+    }
+  }
+
+  const fecharErroModal = () => {
+    setErroModal(false)
+    setMensagemErroModal('')
   }
 
   const inputClass = (erro) =>
@@ -181,82 +183,130 @@ export const Usuarios = () => {
         })}
       </ul>
 
-      <Modal
-        isOpen={modalAberto}
-        title={usuarioSelecionado ? 'Editar Usuário' : 'Novo Usuário'}
-        onClose={fecharModal}
-      >
-        {erroNome && <span className="text-red-500 text-sm mb-1 block">{erroNome}</span>}
-        <input
-          type="text"
-          value={nome}
-          onChange={(e) => { setNome(e.target.value); setErroNome('') }}
-          placeholder="Nome"
-          className={inputClass(erroNome)}
-        />
+      {/* Modal de edição/adição com fundo desfocado */}
+      <AnimatePresence>
+        {modalAberto && (
+          <motion.div
+            className="fixed inset-0 z-50 flex justify-center items-center"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            {/* overlay desfocado */}
+            <div className="absolute inset-0 bg-black/30 backdrop-blur-sm"></div>
 
-        {erroEmail && <span className="text-red-500 text-sm mb-1 block">{erroEmail}</span>}
-        <input
-          type="email"
-          value={email}
-          onChange={(e) => { setEmail(e.target.value); setErroEmail('') }}
-          placeholder="Email"
-          className={inputClass(erroEmail)}
-        />
-
-        {!usuarioSelecionado && (
-          <>
-            {erroSenha && <span className="text-red-500 text-sm mb-1 block">{erroSenha}</span>}
-            <input
-              type="password"
-              value={senha}
-              onChange={(e) => { setSenha(e.target.value); setErroSenha('') }}
-              placeholder="Senha"
-              className={inputClass(erroSenha)}
-            />
-          </>
+            {/* modal original */}
+            <Modal
+              isOpen={modalAberto}
+              title={usuarioSelecionado ? 'Editar Usuário' : 'Novo Usuário'}
+              onClose={fecharModal}
+            >
+              {erroNome && <span className="text-red-500 text-sm mb-1 block">{erroNome}</span>}
+              <input
+                type="text"
+                value={nome}
+                onChange={(e) => { setNome(e.target.value); setErroNome('') }}
+                placeholder="Nome"
+                className={inputClass(erroNome)}
+              />
+              {erroEmail && <span className="text-red-500 text-sm mb-1 block">{erroEmail}</span>}
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => { setEmail(e.target.value); setErroEmail('') }}
+                placeholder="Email"
+                className={inputClass(erroEmail)}
+              />
+              {!usuarioSelecionado && (
+                <>
+                  {erroSenha && <span className="text-red-500 text-sm mb-1 block">{erroSenha}</span>}
+                  <input
+                    type="password"
+                    value={senha}
+                    onChange={(e) => { setSenha(e.target.value); setErroSenha('') }}
+                    placeholder="Senha"
+                    className={inputClass(erroSenha)}
+                  />
+                </>
+              )}
+              {erroTipo && <span className="text-red-500 text-sm mb-1 block">{erroTipo}</span>}
+              <select
+                value={tpUsuId}
+                onChange={(e) => { setTpUsuId(Number(e.target.value)); setErroTipo('') }}
+                className={inputClass(erroTipo)}
+              >
+                <option value="">Selecione o tipo de usuário</option>
+                {tipos.map((tipo) => (
+                  <option key={tipo.id} value={tipo.id}>
+                    {tipo.descricao}
+                  </option>
+                ))}
+              </select>
+              <div className="flex justify-between items-center">
+                {usuarioSelecionado && (
+                  <button
+                    onClick={confirmarExclusao}
+                    className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 transition"
+                  >
+                    Excluir
+                  </button>
+                )}
+                <div className="flex gap-2 ml-auto">
+                  <button
+                    onClick={fecharModal}
+                    className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 dark:bg-gray-600 dark:hover:bg-gray-500 dark:text-white transition"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={salvarUsuario}
+                    className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition"
+                  >
+                    Salvar
+                  </button>
+                </div>
+              </div>
+            </Modal>
+          </motion.div>
         )}
+      </AnimatePresence>
 
-        {erroTipo && <span className="text-red-500 text-sm mb-1 block">{erroTipo}</span>}
-        <select
-          value={tpUsuId}
-          onChange={(e) => { setTpUsuId(Number(e.target.value)); setErroTipo('') }}
-          className={inputClass(erroTipo)}
-        >
-          <option value="">Selecione o tipo de usuário</option>
-          {tipos.map((tipo) => (
-            <option key={tipo.id} value={tipo.id}>
-              {tipo.descricao}
-            </option>
-          ))}
-        </select>
+      {/* Modal de erro do usuário */}
+      <AnimatePresence>
+        {erroModal && (
+          <motion.div
+            className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
+            <motion.div
+              className={`rounded-2xl shadow-xl p-6 text-center w-96 ${isDarkMode ? 'bg-gray-800 text-gray-100' : 'bg-white text-gray-800'
+                }`}
+              initial={{ scale: 0.9, y: 30 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 30 }}
+              transition={{ type: 'spring', stiffness: 200, damping: 15 }}
+            >
+              <div className="text-red-500 text-6xl mb-4">⚠️</div>
 
-        <div className="flex justify-between items-center">
-          {usuarioSelecionado && (
-            <button
-              onClick={confirmarExclusao}
-              className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 transition"
-            >
-              Excluir
-            </button>
-          )}
+              <p className="text-lg font-semibold mb-2">Erro ao excluir usuário</p>
+              <p className="text-gray-600 dark:text-gray-300 mb-6">{mensagemErroModal}</p>
 
-          <div className="flex gap-2 ml-auto">
-            <button
-              onClick={fecharModal}
-              className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 dark:bg-gray-600 dark:hover:bg-gray-500 dark:text-white transition"
-            >
-              Cancelar
-            </button>
-            <button
-              onClick={salvarUsuario}
-              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition"
-            >
-              Salvar
-            </button>
-          </div>
-        </div>
-      </Modal>
+              <button
+                onClick={fecharErroModal}
+                className={`px-6 py-2 rounded-md transition-colors ${isDarkMode
+                  ? 'bg-blue-500 hover:bg-blue-600 text-white'
+                  : 'bg-blue-600 hover:bg-blue-700 text-white'
+                  }`}
+              >
+                Entendi
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

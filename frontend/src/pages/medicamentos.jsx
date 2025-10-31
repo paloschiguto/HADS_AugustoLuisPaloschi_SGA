@@ -7,6 +7,7 @@ import {
     excluirMedicamento
 } from '../services/medicamentoService'
 import Modal from '../components/modal'
+import { motion, AnimatePresence } from 'framer-motion'
 
 export const Medicamentos = () => {
     const [medicamentos, setMedicamentos] = useState([])
@@ -16,6 +17,9 @@ export const Medicamentos = () => {
     const [descricao, setDescricao] = useState('')
     const [dosagem, setDosagem] = useState('')
     const [erros, setErros] = useState({})
+
+    const [mostrarErroModal, setMostrarErroModal] = useState(false)
+    const [mensagemErroModal, setMensagemErroModal] = useState('')
 
     const carregarMedicamentos = async () => {
         try {
@@ -87,7 +91,14 @@ export const Medicamentos = () => {
             fecharModal()
         } catch (err) {
             console.error('Erro ao excluir medicamento:', err)
+            setMensagemErroModal('O medicamento está vinculado a um atendimento e não pode ser excluído.')
+            setMostrarErroModal(true)
         }
+    }
+
+    const fecharErroModal = () => {
+        setMostrarErroModal(false)
+        setMensagemErroModal('')
     }
 
     return (
@@ -134,60 +145,102 @@ export const Medicamentos = () => {
                 ))}
             </ul>
 
-            {/* Modal */}
-            <Modal
-                isOpen={modalAberto}
-                title={medicamentoSelecionado ? 'Editar Medicamento' : 'Novo Medicamento'}
-                onClose={fecharModal}
-            >
-                {erros.descricao && <span className="text-red-500 text-sm mb-1 block">{erros.descricao}</span>}
-                <input
-                    type="text"
-                    value={descricao}
-                    onChange={(e) => { setDescricao(e.target.value); setErros({ ...erros, descricao: '' }) }}
-                    placeholder="Descrição"
-                    className={`border rounded-md w-full p-2 mb-4 bg-white dark:bg-gray-700 text-textPrimary dark:text-gray-100
-            ${erros.descricao ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}
-            focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors`}
-                />
-
-                {erros.dosagem && <span className="text-red-500 text-sm mb-1 block">{erros.dosagem}</span>}
-                <input
-                    type="text"
-                    value={dosagem}
-                    onChange={(e) => { setDosagem(e.target.value); setErros({ ...erros, dosagem: '' }) }}
-                    placeholder="Dosagem"
-                    className={`border rounded-md w-full p-2 mb-4 bg-white dark:bg-gray-700 text-textPrimary dark:text-gray-100
-            ${erros.dosagem ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}
-            focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors`}
-                />
-
-                <div className="flex justify-between items-center">
-                    {medicamentoSelecionado && (
-                        <button
-                            onClick={confirmarExclusao}
-                            className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 transition"
+            {/* Modal de cadastro/edição com desfoque */}
+            <AnimatePresence>
+                {modalAberto && (
+                    <>
+                        <motion.div
+                            className="fixed inset-0 backdrop-blur-sm bg-black/20 z-40"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                        />
+                        <Modal
+                            isOpen={modalAberto}
+                            title={medicamentoSelecionado ? 'Editar Medicamento' : 'Novo Medicamento'}
+                            onClose={fecharModal}
                         >
-                            Excluir
-                        </button>
-                    )}
+                            {erros.descricao && <span className="text-red-500 text-sm mb-1 block">{erros.descricao}</span>}
+                            <input
+                                type="text"
+                                value={descricao}
+                                onChange={(e) => { setDescricao(e.target.value); setErros({ ...erros, descricao: '' }) }}
+                                placeholder="Descrição"
+                                className={`border rounded-md w-full p-2 mb-4 bg-white dark:bg-gray-700 text-textPrimary dark:text-gray-100
+                                ${erros.descricao ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}
+                                focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors`}
+                            />
 
-                    <div className="flex gap-2 ml-auto">
-                        <button
-                            onClick={fecharModal}
-                            className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 dark:bg-gray-600 dark:hover:bg-gray-500 dark:text-white transition"
+                            {erros.dosagem && <span className="text-red-500 text-sm mb-1 block">{erros.dosagem}</span>}
+                            <input
+                                type="text"
+                                value={dosagem}
+                                onChange={(e) => { setDosagem(e.target.value); setErros({ ...erros, dosagem: '' }) }}
+                                placeholder="Dosagem"
+                                className={`border rounded-md w-full p-2 mb-4 bg-white dark:bg-gray-700 text-textPrimary dark:text-gray-100
+                                ${erros.dosagem ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}
+                                focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors`}
+                            />
+
+                            <div className="flex justify-between items-center">
+                                {medicamentoSelecionado && (
+                                    <button
+                                        onClick={confirmarExclusao}
+                                        className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 transition"
+                                    >
+                                        Excluir
+                                    </button>
+                                )}
+
+                                <div className="flex gap-2 ml-auto">
+                                    <button
+                                        onClick={fecharModal}
+                                        className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 dark:bg-gray-600 dark:hover:bg-gray-500 dark:text-white transition"
+                                    >
+                                        Cancelar
+                                    </button>
+                                    <button
+                                        onClick={salvarMedicamento}
+                                        className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition"
+                                    >
+                                        Salvar
+                                    </button>
+                                </div>
+                            </div>
+                        </Modal>
+                    </>
+                )}
+            </AnimatePresence>
+
+            {/* Modal de erro ao excluir */}
+            <AnimatePresence>
+                {mostrarErroModal && (
+                    <motion.div
+                        className="fixed inset-0 bg-black/50 flex justify-center items-center z-50"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                    >
+                        <motion.div
+                            className="rounded-2xl shadow-xl p-6 text-center w-96 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100"
+                            initial={{ scale: 0.9, y: 30 }}
+                            animate={{ scale: 1, y: 0 }}
+                            exit={{ scale: 0.9, y: 30 }}
+                            transition={{ type: 'spring', stiffness: 200, damping: 15 }}
                         >
-                            Cancelar
-                        </button>
-                        <button
-                            onClick={salvarMedicamento}
-                            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition"
-                        >
-                            Salvar
-                        </button>
-                    </div>
-                </div>
-            </Modal>
+                            <div className="text-red-500 text-6xl mb-4">⚠️</div>
+                            <p className="text-lg font-semibold mb-2">Erro ao excluir medicamento.</p>
+                            <p className="text-gray-600 dark:text-gray-300 mb-6">{mensagemErroModal}</p>
+                            <button
+                                onClick={fecharErroModal}
+                                className="px-6 py-2 rounded-md bg-blue-500 hover:bg-blue-600 text-white transition-colors"
+                            >
+                                Entendi
+                            </button>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     )
 }

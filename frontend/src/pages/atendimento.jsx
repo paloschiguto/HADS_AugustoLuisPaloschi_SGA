@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Pencil } from 'lucide-react'
 import Modal from '../components/modal'
 import Select from 'react-select'
+import { AnimatePresence, motion } from 'framer-motion'
 import {
   fetchAtendimentos,
   createAtendimento,
@@ -97,7 +98,6 @@ export const Atendimentos = () => {
       medicamentos: medicamentosIds
     }
 
-
     try {
       if (atendimentoSelecionado) {
         await atualizarAtendimento(atendimentoSelecionado.id, payload)
@@ -170,118 +170,132 @@ export const Atendimentos = () => {
         ))}
       </ul>
 
-      {/* Modal */}
-      <Modal
-        isOpen={modalAberto}
-        title={atendimentoSelecionado ? 'Editar Atendimento' : 'Novo Atendimento'}
-        onClose={fecharModal}
-      >
-        {/** Mensagem de erro acima do select */}
-        {erros.usuarioId && <span className="text-red-500 text-sm mb-1 block">{erros.usuarioId}</span>}
-        <select
-          value={usuarioId}
-          onChange={(e) => setUsuarioId(e.target.value)}
-          className={`border rounded-md w-full p-2 mb-4 bg-white dark:bg-gray-700 text-textPrimary dark:text-gray-100
-            ${erros.usuarioId ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}
-            focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors`}
-        >
-          <option value="">Selecione o usuário</option>
-          {usuarios.map((u) => <option key={u.id} value={u.id}>{u.nome}</option>)}
-        </select>
+      {/* Modal com desfoque */}
+      <AnimatePresence>
+        {modalAberto && (
+          <>
+            {/* Overlay com desfoque */}
+            <motion.div
+              className="fixed inset-0 backdrop-blur-sm bg-black/20 z-40"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            />
 
-        {erros.pacienteId && <span className="text-red-500 text-sm mb-1 block">{erros.pacienteId}</span>}
-        <select
-          value={pacienteId}
-          onChange={(e) => setPacienteId(e.target.value)}
-          className={`border rounded-md w-full p-2 mb-4 bg-white dark:bg-gray-700 text-textPrimary dark:text-gray-100
-            ${erros.pacienteId ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}
-            focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors`}
-        >
-          <option value="">Selecione o paciente</option>
-          {pacientes.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
-        </select>
-
-        {erros.descricao && <span className="text-red-500 text-sm mb-1 block">{erros.descricao}</span>}
-        <input
-          type="text"
-          value={descricao}
-          onChange={(e) => setDescricao(e.target.value)}
-          placeholder="Descrição"
-          className={`border rounded-md w-full p-2 mb-4 bg-white dark:bg-gray-700 text-textPrimary dark:text-gray-100
-            ${erros.descricao ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}
-            focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors`}
-        />
-
-        <input
-          type="text"
-          value={obs}
-          onChange={(e) => setObs(e.target.value)}
-          placeholder="Observação"
-          className="border rounded-md w-full p-2 mb-4 bg-white dark:bg-gray-700 text-textPrimary dark:text-gray-100 border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
-        />
-
-        <Select
-          isMulti
-          options={medicamentos.map(m => ({ value: m.id, label: m.descricao }))}
-          value={medicamentos.filter(m => medicamentosIds.includes(m.id)).map(m => ({ value: m.id, label: m.descricao }))}
-          onChange={(selected) => setMedicamentosIds(selected.map(s => s.value))}
-          placeholder="Selecione medicamentos..."
-          className="mb-4 text-textPrimary"
-          styles={{
-            control: (base, state) => ({
-              ...base,
-              backgroundColor: document.documentElement.classList.contains('dark') ? '#374151' : 'white',
-              borderColor: state.isFocused ? '#3B82F6' : document.documentElement.classList.contains('dark') ? '#4B5563' : '#D1D5DB',
-              boxShadow: state.isFocused ? '0 0 0 1px #3B82F6' : 'none'
-            }),
-            menu: (base) => ({ ...base, backgroundColor: document.documentElement.classList.contains('dark') ? '#1F2937' : 'white' }),
-            option: (base, state) => ({
-              ...base,
-              backgroundColor: state.isFocused ? '#3B82F6' : document.documentElement.classList.contains('dark') ? '#1F2937' : 'white',
-              color: state.isFocused ? 'white' : document.documentElement.classList.contains('dark') ? '#F9FAFB' : '#111827'
-            }),
-            multiValue: (base) => ({
-              ...base,
-              backgroundColor: document.documentElement.classList.contains('dark') ? '#4B5563' : '#E5E7EB'
-            }),
-            multiValueLabel: (base) => ({
-              ...base,
-              color: document.documentElement.classList.contains('dark') ? '#F9FAFB' : '#111827'
-            }),
-            multiValueRemove: (base) => ({
-              ...base,
-              color: document.documentElement.classList.contains('dark') ? '#F9FAFB' : '#111827',
-              ':hover': { backgroundColor: '#EF4444', color: 'white' }
-            })
-          }}
-        />
-
-        <div className="flex justify-between items-center">
-          {atendimentoSelecionado && (
-            <button
-              onClick={confirmarExclusao}
-              className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 transition"
+            <Modal
+              isOpen={modalAberto}
+              title={atendimentoSelecionado ? 'Editar Atendimento' : 'Novo Atendimento'}
+              onClose={fecharModal}
             >
-              Excluir
-            </button>
-          )}
+              {/** Campos do formulário */}
+              {erros.usuarioId && <span className="text-red-500 text-sm mb-1 block">{erros.usuarioId}</span>}
+              <select
+                value={usuarioId}
+                onChange={(e) => setUsuarioId(e.target.value)}
+                className={`border rounded-md w-full p-2 mb-4 bg-white dark:bg-gray-700 text-textPrimary dark:text-gray-100
+                  ${erros.usuarioId ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}
+                  focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors`}
+              >
+                <option value="">Selecione o usuário</option>
+                {usuarios.map((u) => <option key={u.id} value={u.id}>{u.nome}</option>)}
+              </select>
 
-          <div className="flex gap-2 ml-auto">
-            <button
-              onClick={fecharModal}
-              className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 dark:bg-gray-600 dark:hover:bg-gray-500 dark:text-white transition"
-            >
-              Cancelar
-            </button>
-            <button
-              onClick={salvarAtendimento}
-              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition"
-            >
-              Salvar
-            </button>
-          </div>
-        </div>
-      </Modal>
+              {erros.pacienteId && <span className="text-red-500 text-sm mb-1 block">{erros.pacienteId}</span>}
+              <select
+                value={pacienteId}
+                onChange={(e) => setPacienteId(e.target.value)}
+                className={`border rounded-md w-full p-2 mb-4 bg-white dark:bg-gray-700 text-textPrimary dark:text-gray-100
+                  ${erros.pacienteId ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}
+                  focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors`}
+              >
+                <option value="">Selecione o paciente</option>
+                {pacientes.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
+              </select>
+
+              {erros.descricao && <span className="text-red-500 text-sm mb-1 block">{erros.descricao}</span>}
+              <input
+                type="text"
+                value={descricao}
+                onChange={(e) => setDescricao(e.target.value)}
+                placeholder="Descrição"
+                className={`border rounded-md w-full p-2 mb-4 bg-white dark:bg-gray-700 text-textPrimary dark:text-gray-100
+                  ${erros.descricao ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}
+                  focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors`}
+              />
+
+              <input
+                type="text"
+                value={obs}
+                onChange={(e) => setObs(e.target.value)}
+                placeholder="Observação"
+                className="border rounded-md w-full p-2 mb-4 bg-white dark:bg-gray-700 text-textPrimary dark:text-gray-100 border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+              />
+
+              <Select
+                isMulti
+                options={medicamentos.map(m => ({ value: m.id, label: m.descricao }))}
+                value={medicamentos.filter(m => medicamentosIds.includes(m.id)).map(m => ({ value: m.id, label: m.descricao }))}
+                onChange={(selected) => setMedicamentosIds(selected.map(s => s.value))}
+                placeholder="Selecione medicamentos..."
+                className="mb-4 text-textPrimary"
+                styles={{
+                  control: (base, state) => ({
+                    ...base,
+                    backgroundColor: document.documentElement.classList.contains('dark') ? '#374151' : 'white',
+                    borderColor: state.isFocused ? '#3B82F6' : document.documentElement.classList.contains('dark') ? '#4B5563' : '#D1D5DB',
+                    boxShadow: state.isFocused ? '0 0 0 1px #3B82F6' : 'none'
+                  }),
+                  menu: (base) => ({ ...base, backgroundColor: document.documentElement.classList.contains('dark') ? '#1F2937' : 'white' }),
+                  option: (base, state) => ({
+                    ...base,
+                    backgroundColor: state.isFocused ? '#3B82F6' : document.documentElement.classList.contains('dark') ? '#1F2937' : 'white',
+                    color: state.isFocused ? 'white' : document.documentElement.classList.contains('dark') ? '#F9FAFB' : '#111827'
+                  }),
+                  multiValue: (base) => ({
+                    ...base,
+                    backgroundColor: document.documentElement.classList.contains('dark') ? '#4B5563' : '#E5E7EB'
+                  }),
+                  multiValueLabel: (base) => ({
+                    ...base,
+                    color: document.documentElement.classList.contains('dark') ? '#F9FAFB' : '#111827'
+                  }),
+                  multiValueRemove: (base) => ({
+                    ...base,
+                    color: document.documentElement.classList.contains('dark') ? '#F9FAFB' : '#111827',
+                    ':hover': { backgroundColor: '#EF4444', color: 'white' }
+                  })
+                }}
+              />
+
+              <div className="flex justify-between items-center">
+                {atendimentoSelecionado && (
+                  <button
+                    onClick={confirmarExclusao}
+                    className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 transition"
+                  >
+                    Excluir
+                  </button>
+                )}
+
+                <div className="flex gap-2 ml-auto">
+                  <button
+                    onClick={fecharModal}
+                    className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 dark:bg-gray-600 dark:hover:bg-gray-500 dark:text-white transition"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={salvarAtendimento}
+                    className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition"
+                  >
+                    Salvar
+                  </button>
+                </div>
+              </div>
+            </Modal>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
