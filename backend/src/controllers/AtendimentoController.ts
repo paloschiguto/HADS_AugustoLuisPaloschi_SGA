@@ -48,7 +48,6 @@ export const getAtendimentos = async (req: Request, res: Response) => {
   }
 }
 
-
 export const getAtendimentoById = async (req: Request, res: Response) => {
   const { id } = req.params
   try {
@@ -64,13 +63,26 @@ export const createAtendimento = async (req: Request, res: Response) => {
   let { descricao, obs, finalizado, usuId, pacId } = req.body
   const userId = getUserIdFromReq(req)
 
-  if (!userId) return res.status(401).json({ error: 'Usuário não autenticado' })
-
-  // Converte IDs para número
-  usuId = Number(usuId)
-  pacId = Number(pacId)
+  if (!userId)
+    return res.status(401).json({ error: 'Usuário não autenticado' })
 
   try {
+    const usuario = await prisma.usuario.findUnique({
+      where: { id: userId },
+      include: { tipo: true }
+    })
+
+    if (!usuario)
+      return res.status(404).json({ error: 'Usuário não encontrado' })
+
+    if (usuario.tipo.descricao !== 'ADM') {
+      usuId = userId
+    } else {
+      usuId = Number(usuId)
+    }
+
+    pacId = Number(pacId)
+
     const novoAtendimento = await prisma.atendimento.create({
       data: {
         descricao,
@@ -82,8 +94,9 @@ export const createAtendimento = async (req: Request, res: Response) => {
         createdOn: new Date()
       }
     })
+
     res.json({
-      message: "Atendimento criado com sucesso!",
+      message: 'Atendimento criado com sucesso!',
       atendimento: novoAtendimento
     })
   } catch (error: any) {
@@ -91,6 +104,8 @@ export const createAtendimento = async (req: Request, res: Response) => {
     res.status(500).json({ error: error.message, details: error })
   }
 }
+
+
 
 export const updateAtendimento = async (req: Request, res: Response) => {
   const { id } = req.params

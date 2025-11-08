@@ -30,8 +30,9 @@ export function ModalRedefinirSenha({ isOpen, onClose }) {
       setMensagem(res.message)
       setFase(2)
     } catch (err) {
-      setErro(err.error || 'Erro ao enviar código')
-    } finally {
+      setErro(err.message)
+    }
+    finally {
       setLoading(false)
     }
   }
@@ -64,8 +65,9 @@ export function ModalRedefinirSenha({ isOpen, onClose }) {
       setEmail('')
       setCodigo('')
       setNovaSenha('')
+      onClose()
     } catch (err) {
-      setErro(err.error || 'Erro ao redefinir senha')
+      setErro(err.mes)
     } finally {
       setLoading(false)
     }

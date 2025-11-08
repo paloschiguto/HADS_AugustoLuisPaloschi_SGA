@@ -9,9 +9,10 @@ export const solicitarCodigo = async (email) => {
     const res = await api.post('/solicitar', { email })
     return res.data
   } catch (err) {
-    console.error('Erro ao solicitar código:', err)
-    throw err
+    const msg = err.response?.data?.error || err.response?.data?.message || 'Erro desconhecido'
+    throw new Error(msg)
   }
+
 }
 
 export const redefinirSenha = async (email, codigo, novaSenha) => {
@@ -19,7 +20,8 @@ export const redefinirSenha = async (email, codigo, novaSenha) => {
     const res = await api.post('/redefinir', { email, codigo, novaSenha })
     return res.data
   } catch (err) {
-    console.error('Erro ao redefinir senha:', err)
-    throw err
+    const backendMsg = err.response?.data?.error || err.response?.data?.message || 'Erro ao redefinir senha'
+    throw new Error(backendMsg)
   }
 }
+

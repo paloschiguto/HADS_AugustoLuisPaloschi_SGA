@@ -12,7 +12,7 @@ export const solicitarRecuperacao = async (req: Request, res: Response) => {
 
   const usuario = await prisma.usuario.findUnique({ where: { email } })
   if (!usuario || !usuario.ativo) {
-    return res.status(500).json({ message: 'Erro ao enviar o código para o e-mail informado.' })
+    return res.status(500).json({ error: 'Erro ao enviar o código para o e-mail informado.' })
   }
 
   const nome = usuario.nome.split(' ')[0]
@@ -68,7 +68,7 @@ export const redefinirSenha = async (req: Request, res: Response) => {
     where: { email },
     data: {
       senha: hashNova,
-      modifiedBy: usuario.id, 
+      modifiedBy: usuario.id,
       modifiedOn: new Date()
     }
   })

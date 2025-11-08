@@ -33,9 +33,6 @@ export function Login() {
     if (!senha.trim()) {
       setErroSenha('Senha é obrigatória')
       valido = false
-    } else if (senha.length < 6 || !/[A-Za-z]/.test(senha) || !/\d/.test(senha)) {
-      setErroSenha('Senha deve ter pelo menos 6 caracteres, letras e números')
-      valido = false
     } else {
       setErroSenha('')
     }
@@ -51,8 +48,7 @@ export function Login() {
       await login(email, senha)
       navigate('/dashboard')
     } catch (err) {
-      const mensagemErro = err?.response?.data?.error || 'Erro ao tentar fazer login'
-      setErro(mensagemErro)
+      setErro(err.message)
     }
   }
 

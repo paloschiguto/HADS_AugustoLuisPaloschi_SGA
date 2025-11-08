@@ -25,17 +25,29 @@ export const AuthProvider = ({ children }) => {
   }, [])
 
   const login = async (email, senha) => {
-    try {
-      const res = await axios.post(
-        'http://localhost:3000/SGA/login',
-        { email, senha },
-        { withCredentials: true } 
-      )
-      setUser(res.data.usuario)
-    } catch (err) {
-      throw new Error(err.response?.data?.error || 'Erro ao fazer login')
+  try {
+    const res = await axios.post(
+      'http://localhost:3000/SGA/login',
+      { email, senha },
+      { withCredentials: true }
+    )
+    setUser(res.data.usuario)
+  } catch (err) {
+    const status = err.response?.status
+    const message = err.response?.data?.error
+
+    if (status === 401) {
+      throw new Error('Email ou senha incorretos ou usuário inativo.')
+    } else if (status === 400) {
+      throw new Error('Preencha todos os campos')
+    } else if (status === 500) {
+      throw new Error('Erro no servidor. Tente novamente mais tarde.')
+    } else {
+      throw new Error(message || 'Erro ao fazer login')
     }
   }
+}
+
 
   const logout = async () => {
     try {
