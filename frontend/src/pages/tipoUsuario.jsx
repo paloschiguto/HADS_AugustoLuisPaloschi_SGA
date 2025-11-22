@@ -279,7 +279,12 @@ export const TiposUsuario = () => {
                 onChange={(selected) => setPermissoesIds(selected.map(s => s.value))}
                 placeholder="Selecione permissões..."
                 className="mb-4 text-textPrimary"
+                menuPortalTarget={document.body}   // 👉 faz o dropdown sair da modal
                 styles={{
+                  menuPortal: base => ({
+                    ...base,
+                    zIndex: 9999,                 // 👉 garante que o select fica por cima de tudo
+                  }),
                   control: (base, state) => ({
                     ...base,
                     backgroundColor: isDarkMode ? '#374151' : '#fff',
@@ -293,7 +298,7 @@ export const TiposUsuario = () => {
                   }),
                   menu: (base) => ({
                     ...base,
-                    backgroundColor: isDarkMode ? '#374151' : '#fff', // ajustado para dark mode
+                    backgroundColor: isDarkMode ? '#374151' : '#fff',
                     color: isDarkMode ? '#E5E7EB' : '#111827',
                   }),
                   option: (base, state) => ({

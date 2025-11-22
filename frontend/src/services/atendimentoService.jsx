@@ -4,9 +4,11 @@ const API_URL = 'http://localhost:3000/SGA'
 
 export const fetchAtendimentos = async (permissoes) => {
   const { data } = await axios.get(`${API_URL}/atendimentos`, { withCredentials: true })
+
   if (permissoes && permissoes.length) {
-    return data.filter(at => permissoes.includes('atendimento')) 
+    return data.filter(at => permissoes.includes('Atendimento'))
   }
+
   return data
 }
 
@@ -25,12 +27,28 @@ export const excluirAtendimento = async (id) => {
   return data
 }
 
+export const fetchMedicamentos = async () => {
+  const { data } = await axios.get(`${API_URL}/medicamentos`, { withCredentials: true })
+  return data
+}
+
+
+export const fetchMedicamentosAtend = async () => {
+  const { data } = await axios.get(`${API_URL}/medicamentosAtend`, { withCredentials: true })
+  return data
+}
+
 export const createMedicamentoAtend = async (payload) => {
   const { data } = await axios.post(`${API_URL}/medicamentosAtend`, payload, { withCredentials: true })
   return data
 }
 
-export const fetchMedicamentos = async () => {
-  const { data } = await axios.get(`${API_URL}/medicamentos`, { withCredentials: true })
+export const atualizarMedicamentoAtend = async (id, payload) => {
+  const { data } = await axios.put(`${API_URL}/medicamentosAtend/${id}`, payload, { withCredentials: true })
+  return data
+}
+
+export const excluirMedicamentoAtend = async (id) => {
+  const { data } = await axios.delete(`${API_URL}/medicamentosAtend/${id}`, { withCredentials: true })
   return data
 }

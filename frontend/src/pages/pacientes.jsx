@@ -4,6 +4,8 @@ import { fetchPacientes, criarPaciente, atualizarPaciente } from '../services/pa
 import { fetchUsuarios } from '../services/usuarioService'
 import Modal from '../components/modal'
 import { motion, AnimatePresence } from 'framer-motion'
+import DatePicker from 'react-datepicker'
+import 'react-datepicker/dist/react-datepicker.css'
 
 export const Pacientes = () => {
   const [pacientes, setPacientes] = useState([])
@@ -185,15 +187,35 @@ export const Pacientes = () => {
                   focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors`}
               />
 
-              {erros.dataNasc && <span className="text-red-500 text-sm mb-1 block">{erros.dataNasc}</span>}
-              <input
-                type="date"
-                value={dataNasc}
-                onChange={(e) => { setDataNasc(e.target.value); setErros({ ...erros, dataNasc: '' }) }}
-                className={`border rounded-md w-full p-2 mb-2 bg-white dark:bg-gray-700 text-textPrimary dark:text-white
-                  ${erros.dataNasc ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}
-                  focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors`}
-              />
+              {erros.dataNasc && (
+                <span className="text-red-500 text-sm mb-1 block">{erros.dataNasc}</span>
+              )}
+
+              {erros.dataNasc && (
+                <span className="text-red-500 text-sm mb-1 block">{erros.dataNasc}</span>
+              )}
+
+              <div className="relative mb-2">
+                <input
+                  type="date"
+                  value={dataNasc}
+                  onChange={(e) => {
+                    setDataNasc(e.target.value)
+                    setErros({ ...erros, dataNasc: '' })
+                  }}
+                  className={`border rounded-md w-full p-2 pl-3 bg-white dark:bg-gray-700 
+                        text-gray-900 dark:text-white
+                        ${erros.dataNasc ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}
+                        focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors
+                        appearance-none`}
+                />
+
+                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-300">
+                  📅
+                </span>
+              </div>
+
+
 
               <select
                 value={respId}

@@ -19,72 +19,68 @@ export const findMedicAtendById = async (id: number) => {
 }
 
 export const getMedicamentosAtend = async (req: Request, res: Response) => {
-  const token = req.cookies?.token
-  if (!token) return res.status(401).json({ error: 'Usuário não autenticado' })
-
-  let permissoes: string[] = []
-  try {
-    const payload = jwt.verify(token, process.env.JWT_SECRET!) as { permissoes: string[] }
-    permissoes = payload.permissoes
-  } catch {
-    return res.status(401).json({ error: 'Token inválido' })
-  }
-
-  if (!permissoes.includes('Atendimento')) {
-    return res.status(403).json({ error: 'Usuário não possui permissão para visualizar medicamentos' })
-  }
+  const userId = getUserIdFromReq(req)
+  if (!userId) return res.status(401).json({ error: 'Usuário não autenticado' })
 
   try {
     const registros = await prisma.medicamentosAtend.findMany({
-      include: { atendimento: true, medicamento: true }
+      include: {
+        atendimento: true,
+        medicamento: true
+      }
     })
-    if (!registros.length) return res.status(404).json({ error: 'Nenhum vínculo encontrado.' })
+
+    if (!registros.length)
+      return res.status(404).json({ error: 'Nenhum vínculo encontrado' })
+
     res.json(registros)
-  } catch (error) {
+  } catch {
     res.status(500).json({ error: 'Erro ao buscar vínculos de medicamentos em atendimentos' })
   }
 }
 
-
 export const getMedicamentoAtendById = async (req: Request, res: Response) => {
   const { id } = req.params
+
   try {
     const registro = await findMedicAtendById(Number(id))
     if (!registro) return res.status(404).json({ error: 'Vínculo não encontrado' })
+
     res.json(registro)
-  } catch (error) {
+  } catch {
     res.status(500).json({ error: 'Erro ao buscar vínculo' })
   }
 }
 
 export const createMedicamentoAtend = async (req: Request, res: Response) => {
-  let { atendId, medId, qtde } = req.body
+  let { atendimentoId, medicamentoId, dosagem, frequencia, duracao, observacao } = req.body
+
   const userId = getUserIdFromReq(req)
   if (!userId) return res.status(401).json({ error: 'Usuário não autenticado' })
-
-  atendId = Number(atendId)
-  medId = Number(medId)
 
   try {
     const novo = await prisma.medicamentosAtend.create({
       data: {
-        atendId,
-        medId,
-        qtde,
-        createdBy: userId,
-        createdOn: new Date()
+        atendimentoId: Number(atendimentoId),
+        medicamentoId: Number(medicamentoId),
+        dosagem,
+        frequencia,
+        duracao,
+        observacao
       }
     })
+
     res.json(novo)
   } catch (error: any) {
     console.error('ERRO CREATE MEDICAMENTO ATEND:', error)
-    res.status(500).json({ error: error.message, details: error })
+    res.status(500).json({ error: error.message })
   }
 }
 
 export const updateMedicamentoAtend = async (req: Request, res: Response) => {
   const { id } = req.params
-  let { atendId, medId, qtde } = req.body
+  let { atendimentoId, medicamentoId, dosagem, frequencia, duracao, observacao } = req.body
+
   const userId = getUserIdFromReq(req)
   if (!userId) return res.status(401).json({ error: 'Usuário não autenticado' })
 
@@ -92,35 +88,44 @@ export const updateMedicamentoAtend = async (req: Request, res: Response) => {
     const existente = await findMedicAtendById(Number(id))
     if (!existente) return res.status(404).json({ error: 'Vínculo não encontrado' })
 
-    const dataToUpdate: Prisma.MedicamentosAtendUpdateInput = {
-      modifiedOn: new Date(),
-      modifiedBy: userId
-    }
+    const dataToUpdate: Prisma.MedicamentosAtendUpdateInput = {}
 
-    if (atendId !== undefined) dataToUpdate.atendimento = { connect: { id: Number(atendId) } }
-    if (medId !== undefined) dataToUpdate.medicamento = { connect: { id: Number(medId) } }
-    if (qtde !== undefined) dataToUpdate.qtde = qtde
+    if (atendimentoId !== undefined)
+      dataToUpdate.atendimento = { connect: { id: Number(atendimentoId) } }
+
+    if (medicamentoId !== undefined)
+      dataToUpdate.medicamento = { connect: { id: Number(medicamentoId) } }
+
+    if (dosagem !== undefined) dataToUpdate.dosagem = dosagem
+    if (frequencia !== undefined) dataToUpdate.frequencia = frequencia
+    if (duracao !== undefined) dataToUpdate.duracao = duracao
+    if (observacao !== undefined) dataToUpdate.observacao = observacao
 
     const atualizado = await prisma.medicamentosAtend.update({
       where: { id: Number(id) },
       data: dataToUpdate
     })
+
     res.json(atualizado)
   } catch (error: any) {
-    if (error.code === 'P2025') return res.status(404).json({ error: 'Vínculo não encontrado' })
+    if (error.code === 'P2025')
+      return res.status(404).json({ error: 'Vínculo não encontrado' })
+
     res.status(500).json({ error: 'Erro ao atualizar vínculo' })
   }
 }
 
 export const deleteMedicamentoAtend = async (req: Request, res: Response) => {
   const { id } = req.params
+
   try {
     const existente = await findMedicAtendById(Number(id))
     if (!existente) return res.status(404).json({ error: 'Vínculo não encontrado' })
 
     await prisma.medicamentosAtend.delete({ where: { id: Number(id) } })
+
     res.json({ message: 'Vínculo excluído com sucesso' })
-  } catch (error) {
+  } catch {
     res.status(500).json({ error: 'Erro ao excluir vínculo' })
   }
 }

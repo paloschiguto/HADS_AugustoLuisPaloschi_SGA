@@ -1,7 +1,7 @@
 import { Request, Response } from 'express'
 import { prisma } from '../prismaClient'
-import { Prisma } from '@prisma/client'
 import jwt from 'jsonwebtoken'
+import { Prisma } from '@prisma/client'
 
 const getUserIdFromReq = (req: Request): number | null => {
   const token = req.cookies?.token
@@ -15,7 +15,16 @@ const getUserIdFromReq = (req: Request): number | null => {
 }
 
 export const findAtendimentoById = async (id: number) => {
-  return prisma.atendimento.findUnique({ where: { id } })
+  return prisma.atendimento.findUnique({
+    where: { id },
+    include: {
+      usuario: true,
+      paciente: true,
+      medicamentos: {
+        include: { medicamento: true }
+      }
+    }
+  })
 }
 
 export const getAtendimentos = async (req: Request, res: Response) => {
@@ -30,20 +39,22 @@ export const getAtendimentos = async (req: Request, res: Response) => {
     return res.status(401).json({ error: 'Token inválido' })
   }
 
-  if (!permissoes.includes('Atendimento')) {
+  if (!permissoes.includes('Atendimento'))
     return res.status(403).json({ error: 'Usuário não possui permissão para visualizar atendimentos' })
-  }
 
   try {
     const atendimentos = await prisma.atendimento.findMany({
       include: {
         usuario: true,
         paciente: true,
-        medicamentos: true
-      }
+        medicamentos: { include: { medicamento: true } }
+      },
+      orderBy: { createdOn: 'desc' }
     })
+
     res.json(atendimentos)
-  } catch (error) {
+
+  } catch {
     res.status(500).json({ error: 'Erro ao buscar atendimentos' })
   }
 }
@@ -53,45 +64,43 @@ export const getAtendimentoById = async (req: Request, res: Response) => {
   try {
     const atendimento = await findAtendimentoById(Number(id))
     if (!atendimento) return res.status(404).json({ error: 'Atendimento não encontrado' })
+
     res.json(atendimento)
-  } catch (error) {
+
+  } catch {
     res.status(500).json({ error: 'Erro ao buscar atendimento' })
   }
 }
 
 export const createAtendimento = async (req: Request, res: Response) => {
-  let { descricao, obs, finalizado, usuId, pacId } = req.body
-  const userId = getUserIdFromReq(req)
+  const {
+    descricao,
+    diagnostico,
+    obs,
+    cidade,
+    uf,
+    temperatura,
+    peso,
+    finalizado,
+    pacId
+  } = req.body
 
-  if (!userId)
-    return res.status(401).json({ error: 'Usuário não autenticado' })
+  const userId = getUserIdFromReq(req)
+  if (!userId) return res.status(401).json({ error: 'Usuário não autenticado' })
 
   try {
-    const usuario = await prisma.usuario.findUnique({
-      where: { id: userId },
-      include: { tipo: true }
-    })
-
-    if (!usuario)
-      return res.status(404).json({ error: 'Usuário não encontrado' })
-
-    if (usuario.tipo.descricao !== 'ADM') {
-      usuId = userId
-    } else {
-      usuId = Number(usuId)
-    }
-
-    pacId = Number(pacId)
-
     const novoAtendimento = await prisma.atendimento.create({
       data: {
         descricao,
+        diagnostico: diagnostico || null,
         obs: obs || null,
+        cidade,
+        uf,
+        temperatura: temperatura ? Number(temperatura) : null,
+        peso: peso ? Number(peso) : null,
         finalizado: finalizado ?? false,
-        usuId,
-        pacId,
         createdBy: userId,
-        createdOn: new Date()
+        pacId: Number(pacId)
       }
     })
 
@@ -99,24 +108,35 @@ export const createAtendimento = async (req: Request, res: Response) => {
       message: 'Atendimento criado com sucesso!',
       atendimento: novoAtendimento
     })
+
   } catch (error: any) {
     console.error('ERRO CREATE ATENDIMENTO:', error)
-    res.status(500).json({ error: error.message, details: error })
+    res.status(500).json({ error: error.message })
   }
 }
 
-
-
 export const updateAtendimento = async (req: Request, res: Response) => {
   const { id } = req.params
-  let { descricao, obs, finalizado, usuId, pacId } = req.body
-  const userId = getUserIdFromReq(req)
 
+  const {
+    descricao,
+    diagnostico,
+    obs,
+    cidade,
+    uf,
+    temperatura,
+    peso,
+    finalizado,
+    pacId
+  } = req.body
+
+  const userId = getUserIdFromReq(req)
   if (!userId) return res.status(401).json({ error: 'Usuário não autenticado' })
 
   try {
     const atendimentoExistente = await findAtendimentoById(Number(id))
-    if (!atendimentoExistente) return res.status(404).json({ error: 'Atendimento não encontrado' })
+    if (!atendimentoExistente)
+      return res.status(404).json({ error: 'Atendimento não encontrado' })
 
     const dataToUpdate: Prisma.AtendimentoUpdateInput = {
       modifiedOn: new Date(),
@@ -124,31 +144,48 @@ export const updateAtendimento = async (req: Request, res: Response) => {
     }
 
     if (descricao !== undefined) dataToUpdate.descricao = descricao
-    if (obs !== undefined) dataToUpdate.obs = obs || null
+    if (diagnostico !== undefined) dataToUpdate.diagnostico = diagnostico
+    if (obs !== undefined) dataToUpdate.obs = obs
+    if (cidade !== undefined) dataToUpdate.cidade = cidade
+    if (uf !== undefined) dataToUpdate.uf = uf
+    if (temperatura !== undefined)
+      dataToUpdate.temperatura = temperatura ? Number(temperatura) : null
+    if (peso !== undefined)
+      dataToUpdate.peso = peso ? Number(peso) : null
     if (finalizado !== undefined) dataToUpdate.finalizado = finalizado
-    if (usuId !== undefined) dataToUpdate.usuario = { connect: { id: Number(usuId) } }
-    if (pacId !== undefined) dataToUpdate.paciente = { connect: { id: Number(pacId) } }
+    if (pacId !== undefined)
+      dataToUpdate.paciente = { connect: { id: Number(pacId) } }
 
     const atendimentoAtualizado = await prisma.atendimento.update({
       where: { id: Number(id) },
       data: dataToUpdate
     })
+
     res.json(atendimentoAtualizado)
+
   } catch (error: any) {
-    if (error.code === 'P2025') return res.status(404).json({ error: 'Atendimento não encontrado' })
+    if (error.code === 'P2025')
+      return res.status(404).json({ error: 'Atendimento não encontrado' })
+
     res.status(500).json({ error: 'Erro ao atualizar atendimento' })
   }
 }
 
 export const deleteAtendimento = async (req: Request, res: Response) => {
   const { id } = req.params
+
   try {
     const atendimentoExistente = await findAtendimentoById(Number(id))
-    if (!atendimentoExistente) return res.status(404).json({ error: 'Atendimento não encontrado' })
+    if (!atendimentoExistente)
+      return res.status(404).json({ error: 'Atendimento não encontrado' })
 
-    await prisma.atendimento.delete({ where: { id: Number(id) } })
+    await prisma.atendimento.delete({
+      where: { id: Number(id) }
+    })
+
     res.json({ message: 'Atendimento deletado com sucesso' })
-  } catch (error) {
+
+  } catch {
     res.status(500).json({ error: 'Erro ao deletar atendimento' })
   }
 }

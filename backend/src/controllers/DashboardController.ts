@@ -31,15 +31,15 @@ export const estatisticasMedico = async (req: Request, res: Response) => {
 
     try {
         const totalAtendimentos = await prisma.atendimento.count({
-            where: { usuId: user.id }
+            where: { createdBy: user.id }
         })
 
         const totalPendentes = await prisma.atendimento.count({
-            where: { usuId: user.id, finalizado: false }
+            where: { createdBy: user.id, finalizado: false }
         })
 
         const totalOutros = await prisma.atendimento.count({
-            where: { usuId: { not: user.id } }
+            where: { createdBy: { not: user.id } }
         })
 
         res.json({
@@ -60,7 +60,7 @@ export const atendimentosRecentesMedico = async (req: Request, res: Response) =>
 
     try {
         const atendimentos = await prisma.atendimento.findMany({
-            where: { usuId: user.id },
+            where: { createdBy: user.id },
             orderBy: { createdOn: 'desc' },
             take: 10,
             include: { paciente: true }

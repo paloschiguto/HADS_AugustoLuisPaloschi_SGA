@@ -23,6 +23,9 @@ export default function Dashboard() {
   useEffect(() => {
     if (!user) return
 
+    console.log('USER NO DASHBOARD:', user)
+
+
     const carregarDados = async () => {
       try {
         if (user.tipoUsuario?.descricao === 'Médico') {
