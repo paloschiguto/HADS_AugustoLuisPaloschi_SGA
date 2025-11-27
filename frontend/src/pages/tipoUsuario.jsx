@@ -1,6 +1,14 @@
 import { useEffect, useState } from 'react'
 import Select from 'react-select'
-import { Pencil } from 'lucide-react'
+import {
+  Pencil,
+  Plus,
+  Search,
+  Trash2,
+  Shield,
+  Key,
+  AlertTriangle
+} from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '../services/authContext'
 import { fetchTipos, criarTipo, atualizarTipo, excluirTipo, fetchPermissoes } from '../services/tipoUsuarioService'
@@ -8,30 +16,42 @@ import Modal from '../components/modal'
 
 export const TiposUsuario = () => {
   const { user } = useAuth()
+
   const [tipos, setTipos] = useState([])
   const [permissoes, setPermissoes] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [busca, setBusca] = useState('')
+
+  const [modalAberto, setModalAberto] = useState(false)
+  const [tipoSelecionado, setTipoSelecionado] = useState(null)
+
   const [descricao, setDescricao] = useState('')
   const [permissoesIds, setPermissoesIds] = useState([])
-  const [tipoSelecionado, setTipoSelecionado] = useState(null)
-  const [modalAberto, setModalAberto] = useState(false)
   const [erroDescricao, setErroDescricao] = useState('')
+
   const [mostrarErroModal, setMostrarErroModal] = useState(false)
   const [mensagemErroModal, setMensagemErroModal] = useState('')
+
   const [isDarkMode, setIsDarkMode] = useState(document.documentElement.classList.contains('dark'))
 
-  const carregarTipos = async () => {
-    const data = await fetchTipos()
-    setTipos(data)
-  }
-
-  const carregarPermissoes = async () => {
-    const data = await fetchPermissoes()
-    setPermissoes(data)
+  const carregarDados = async () => {
+    setLoading(true)
+    try {
+      const [tiposData, permData] = await Promise.all([
+        fetchTipos(),
+        fetchPermissoes()
+      ])
+      setTipos(tiposData.sort((a, b) => a.descricao.localeCompare(b.descricao)))
+      setPermissoes(permData)
+    } catch (err) {
+      console.error('Erro ao carregar dados:', err)
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => {
-    carregarTipos()
-    carregarPermissoes()
+    carregarDados()
   }, [])
 
   useEffect(() => {
@@ -41,6 +61,15 @@ export const TiposUsuario = () => {
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
     return () => observer.disconnect()
   }, [])
+
+  const listaFiltrada = tipos.filter(t => {
+    if (!busca) return true
+    const termo = busca.toLowerCase()
+    return (
+      t.descricao.toLowerCase().includes(termo) ||
+      t.id.toString().includes(termo)
+    )
+  })
 
   const abrirModal = (tipo = null) => {
     if (tipo) {
@@ -76,7 +105,7 @@ export const TiposUsuario = () => {
       } else {
         await criarTipo({ descricao, permissoesIds })
       }
-      await carregarTipos()
+      await carregarDados()
       fecharModal()
     } catch (err) {
       console.error('Erro ao salvar tipo:', err)
@@ -88,13 +117,12 @@ export const TiposUsuario = () => {
 
     try {
       await excluirTipo(tipoSelecionado.id)
-      await carregarTipos()
+      await carregarDados()
       fecharModal()
     } catch (err) {
       console.error('Erro ao excluir tipo:', err)
-
       if (err.response && err.response.status === 500) {
-        setMensagemErroModal('O tipo de usuário está vinculado em um usuário.')
+        setMensagemErroModal('Este perfil está vinculado a usuários e não pode ser excluído.')
       } else {
         setMensagemErroModal('Erro ao excluir tipo. Tente novamente mais tarde.')
       }
@@ -107,252 +135,184 @@ export const TiposUsuario = () => {
     setMensagemErroModal('')
   }
 
-  return (
-    <div className="p-6">
-      <h1 className="text-2xl font-semibold mb-4 text-center text-textPrimary dark:text-gray-200">
-        Tipos de Usuário
-      </h1>
+  const selectStyles = {
+    control: (base, state) => ({
+      ...base,
+      backgroundColor: isDarkMode ? '#374151' : 'white',
+      borderColor: state.isFocused ? '#3B82F6' : isDarkMode ? '#4B5563' : '#D1D5DB',
+      minHeight: '38px',
+      borderRadius: '0.375rem'
+    }),
+    menu: (base) => ({ ...base, backgroundColor: isDarkMode ? '#1F2937' : 'white', zIndex: 9999 }),
+    option: (base, state) => ({
+      ...base,
+      backgroundColor: state.isFocused ? '#3B82F6' : 'transparent',
+      color: state.isFocused ? 'white' : isDarkMode ? '#F3F4F6' : '#111827',
+      cursor: 'pointer'
+    }),
+    multiValue: (base) => ({ ...base, backgroundColor: isDarkMode ? '#4B5563' : '#DBEAFE', borderRadius: '4px' }),
+    multiValueLabel: (base) => ({ ...base, color: isDarkMode ? '#F3F4F6' : '#1E40AF', fontSize: '0.85rem' }),
+    multiValueRemove: (base) => ({ ...base, color: isDarkMode ? '#F3F4F6' : '#1E40AF', ':hover': { backgroundColor: '#EF4444', color: 'white' } })
+  }
 
-      <div className="max-w-2xl mx-auto flex justify-end mb-4">
-        <button
-          onClick={() => abrirModal()}
-          className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition"
-        >
-          Novo Tipo
-        </button>
+  // Input Helper
+  const inputClass = (hasError) => `
+        w-full p-2.5 rounded-lg bg-white dark:bg-gray-700 
+        border ${hasError ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} 
+        focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm dark:text-white
+    `
+
+  return (
+    <div className="p-6 min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
+
+      {/* --- CABEÇALHO --- */}
+      <div className="max-w-4xl mx-auto mb-6 flex flex-col md:flex-row justify-between items-center gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-textPrimary dark:text-gray-100 flex items-center gap-2">
+            Tipos de Usuário
+          </h1>
+          <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">
+            Gerencie perfis de acesso e permissões do sistema.
+          </p>
+        </div>
+
+        <div className="flex gap-3 w-full md:w-auto">
+          {/* Barra de Busca */}
+          <div className="relative flex-1 md:w-64">
+            <Search className="absolute left-3 top-2.5 text-gray-400" size={18} />
+            <input
+              type="text"
+              placeholder="Buscar perfil..."
+              value={busca}
+              onChange={e => setBusca(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm text-sm dark:text-white"
+            />
+          </div>
+
+          <button
+            onClick={() => abrirModal()}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition shadow-md whitespace-nowrap text-sm"
+          >
+            <Plus size={18} /> <span className="hidden sm:inline">Novo Tipo</span>
+          </button>
+        </div>
       </div>
 
-      <ul className="max-w-2xl mx-auto bg-white dark:bg-gray-800 rounded shadow divide-y divide-gray-200 dark:divide-gray-700">
-        {tipos.map(tipo => (
-          <li
-            key={tipo.id}
-            className="grid grid-cols-[1fr_100px] items-center px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-          >
-            <span className="text-textPrimary dark:text-gray-100">{tipo.descricao}</span>
-            <button
-              onClick={() => abrirModal(tipo)}
-              className="flex items-center text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 gap-1 transition-colors"
-            >
-              <Pencil size={18} />
-              Editar
-            </button>
-          </li>
-        ))}
-      </ul>
-
-      <Modal
-        isOpen={modalAberto}
-        title={tipoSelecionado ? 'Editar Tipo' : 'Novo Tipo'}
-        onClose={fecharModal}
-      >
-        {erroDescricao && <span className="text-red-500 text-sm mb-1 block">{erroDescricao}</span>}
-
-        <input
-          type="text"
-          value={descricao}
-          onChange={(e) => { setDescricao(e.target.value); setErroDescricao('') }}
-          placeholder="Descrição do tipo"
-          className={`border rounded-md w-full p-2 mb-4 dark:bg-gray-700 dark:text-white
-            ${erroDescricao ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}
-            focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors`}
-        />
-
-        <Select
-          isMulti
-          options={permissoes.map(p => ({ value: p.id, label: p.nome }))}
-          value={permissoes
-            .filter(p => permissoesIds.includes(p.id))
-            .map(p => ({ value: p.id, label: p.nome }))
-          }
-          onChange={(selected) => setPermissoesIds(selected.map(s => s.value))}
-          placeholder="Selecione permissões..."
-          className="mb-4 text-textPrimary"
-          styles={{
-            control: (base, state) => ({
-              ...base,
-              backgroundColor: isDarkMode ? '#374151' : '#fff',
-              borderColor: state.isFocused
-                ? '#3B82F6'
-                : isDarkMode
-                  ? '#4B5563'
-                  : '#D1D5DB',
-              color: isDarkMode ? '#E5E7EB' : '#111827',
-              boxShadow: state.isFocused ? '0 0 0 1px #3B82F6' : 'none',
-            }),
-            menu: (base) => ({
-              ...base,
-              backgroundColor: isDarkMode ? '#1F2937' : '#fff',
-              color: isDarkMode ? '#E5E7EB' : '#111827',
-            }),
-            option: (base, state) => ({
-              ...base,
-              backgroundColor: state.isFocused
-                ? '#3B82F6'
-                : isDarkMode
-                  ? '#1F2937'
-                  : '#fff',
-              color: state.isFocused
-                ? '#fff'
-                : isDarkMode
-                  ? '#F9FAFB'
-                  : '#111827',
-              cursor: 'pointer',
-            }),
-            multiValue: (base) => ({
-              ...base,
-              backgroundColor: isDarkMode ? '#4B5563' : '#E5E7EB',
-            }),
-            multiValueLabel: (base) => ({
-              ...base,
-              color: isDarkMode ? '#F9FAFB' : '#111827',
-            }),
-            multiValueRemove: (base) => ({
-              ...base,
-              color: isDarkMode ? '#F9FAFB' : '#111827',
-              ':hover': { backgroundColor: '#EF4444', color: 'white' },
-            }),
-          }}
-        />
-
-        <div className="flex justify-between">
-          {tipoSelecionado && (
-            <button
-              onClick={confirmarExclusao}
-              className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition"
-            >
-              Excluir
-            </button>
-          )}
-          <div className="ml-auto flex gap-2">
-            <button
-              onClick={fecharModal}
-              className="px-4 py-2 bg-gray-200 dark:bg-gray-600 dark:text-white rounded hover:bg-gray-300 dark:hover:bg-gray-500 transition"
-            >
-              Cancelar
-            </button>
-            <button
-              onClick={salvarTipo}
-              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition"
-            >
-              Salvar
-            </button>
-          </div>
+      {/* --- TABELA --- */}
+      <div className="max-w-4xl mx-auto bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-gray-50 dark:bg-gray-700/50 text-xs uppercase text-gray-500 dark:text-gray-400 font-semibold">
+                <th className="px-6 py-4 w-20">Código</th>
+                <th className="px-6 py-4">Descrição</th>
+                <th className="px-6 py-4 text-right">Ações</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+              {loading ? (
+                <tr><td colSpan="3" className="px-6 py-8 text-center text-gray-500">Carregando tipos...</td></tr>
+              ) : listaFiltrada.length === 0 ? (
+                <tr><td colSpan="3" className="px-6 py-8 text-center text-gray-500">Nenhum perfil encontrado.</td></tr>
+              ) : (
+                listaFiltrada.map((tipo) => (
+                  <tr key={tipo.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
+                    <td className="px-6 py-3 text-sm text-gray-500 dark:text-gray-400">{tipo.id}</td>
+                    <td className="px-6 py-3 font-medium text-gray-900 dark:text-gray-100">
+                      <div className="flex items-center gap-2">
+                        {tipo.descricao}
+                      </div>
+                    </td>
+                    <td className="px-6 py-3 text-right">
+                      <button
+                        onClick={() => abrirModal(tipo)}
+                        className="text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors p-2 rounded-full hover:bg-blue-50 dark:hover:bg-gray-700"
+                        title="Editar"
+                      >
+                        <Pencil size={18} />
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
-      </Modal>
+      </div>
 
-      {/* Modal de erro (tema dinâmico) */}
+      {/* --- MODAL --- */}
       <AnimatePresence>
         {modalAberto && (
           <motion.div
-            className="fixed inset-0 z-50 flex justify-center items-center"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
           >
-            {/* Apenas desfoque, sem escurecer */}
-            <div className="absolute inset-0 backdrop-blur-sm"></div>
+            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={fecharModal} />
 
             <Modal
               isOpen={modalAberto}
               title={tipoSelecionado ? 'Editar Tipo' : 'Novo Tipo'}
               onClose={fecharModal}
+              maxWidth="max-w-lg w-full"
             >
-              {erroDescricao && <span className="text-red-500 text-sm mb-1 block">{erroDescricao}</span>}
+              <div className="space-y-4">
 
-              <input
-                type="text"
-                value={descricao}
-                onChange={(e) => { setDescricao(e.target.value); setErroDescricao('') }}
-                placeholder="Descrição do tipo"
-                className={`border rounded-md w-full p-2 mb-4 dark:bg-gray-700 dark:text-white
-            ${erroDescricao ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}
-            focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors`}
-              />
+                <div>
+                  <label className="block text-sm font-medium mb-1 dark:text-gray-300">Descrição do Perfil *</label>
+                  <input
+                    type="text"
+                    value={descricao}
+                    onChange={(e) => { setDescricao(e.target.value); setErroDescricao('') }}
+                    placeholder="Ex: Administrador"
+                    className={inputClass(erroDescricao)}
+                    autoFocus
+                  />
+                  {erroDescricao && <span className="text-red-500 text-xs mt-1 block">{erroDescricao}</span>}
+                </div>
 
-              <Select
-                isMulti
-                options={permissoes.map(p => ({ value: p.id, label: p.nome }))}
-                value={permissoes
-                  .filter(p => permissoesIds.includes(p.id))
-                  .map(p => ({ value: p.id, label: p.nome }))
-                }
-                onChange={(selected) => setPermissoesIds(selected.map(s => s.value))}
-                placeholder="Selecione permissões..."
-                className="mb-4 text-textPrimary"
-                menuPortalTarget={document.body}   // 👉 faz o dropdown sair da modal
-                styles={{
-                  menuPortal: base => ({
-                    ...base,
-                    zIndex: 9999,                 // 👉 garante que o select fica por cima de tudo
-                  }),
-                  control: (base, state) => ({
-                    ...base,
-                    backgroundColor: isDarkMode ? '#374151' : '#fff',
-                    borderColor: state.isFocused
-                      ? '#3B82F6'
-                      : isDarkMode
-                        ? '#4B5563'
-                        : '#D1D5DB',
-                    color: isDarkMode ? '#E5E7EB' : '#111827',
-                    boxShadow: state.isFocused ? '0 0 0 1px #3B82F6' : 'none',
-                  }),
-                  menu: (base) => ({
-                    ...base,
-                    backgroundColor: isDarkMode ? '#374151' : '#fff',
-                    color: isDarkMode ? '#E5E7EB' : '#111827',
-                  }),
-                  option: (base, state) => ({
-                    ...base,
-                    backgroundColor: state.isFocused
-                      ? '#3B82F6'
-                      : isDarkMode
-                        ? '#374151'
-                        : '#fff',
-                    color: state.isFocused
-                      ? '#fff'
-                      : isDarkMode
-                        ? '#E5E7EB'
-                        : '#111827',
-                    cursor: 'pointer',
-                  }),
-                  multiValue: (base) => ({
-                    ...base,
-                    backgroundColor: isDarkMode ? '#4B5563' : '#E5E7EB',
-                  }),
-                  multiValueLabel: (base) => ({
-                    ...base,
-                    color: isDarkMode ? '#F9FAFB' : '#111827',
-                  }),
-                  multiValueRemove: (base) => ({
-                    ...base,
-                    color: isDarkMode ? '#F9FAFB' : '#111827',
-                    ':hover': { backgroundColor: '#EF4444', color: 'white' },
-                  }),
-                }}
-              />
+                <div>
+                  <label className="block text-sm font-medium mb-1 dark:text-gray-300">Permissões de Acesso</label>
+                  <Select
+                    isMulti
+                    placeholder="Selecione as permissões..."
+                    options={permissoes.map(p => ({ value: p.id, label: p.nome }))}
+                    value={permissoes
+                      .filter(p => permissoesIds.includes(p.id))
+                      .map(p => ({ value: p.id, label: p.nome }))
+                    }
+                    onChange={(selected) => setPermissoesIds(selected.map(s => s.value))}
+                    styles={selectStyles}
+                    menuPortalTarget={document.body}
+                    menuPosition={'fixed'}
+                  />
+                </div>
 
-              <div className="flex justify-between">
-                {tipoSelecionado && (
-                  <button
-                    onClick={confirmarExclusao}
-                    className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition"
-                  >
-                    Excluir
-                  </button>
-                )}
-                <div className="ml-auto flex gap-2">
-                  <button
-                    onClick={fecharModal}
-                    className="px-4 py-2 bg-gray-200 dark:bg-gray-600 dark:text-white rounded hover:bg-gray-300 dark:hover:bg-gray-500 transition"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    onClick={salvarTipo}
-                    className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition"
-                  >
-                    Salvar
-                  </button>
+                {/* RODAPÉ DA MODAL */}
+                <div className="flex justify-between items-center pt-4 mt-2 border-t dark:border-gray-700">
+                  <div>
+                    {tipoSelecionado && (
+                      <button
+                        onClick={confirmarExclusao}
+                        className="bg-red-600 text-white hover:bg-red-700 px-3 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 shadow-sm"
+                      >
+                        <Trash2 size={16} /> Excluir
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={fecharModal}
+                      className="px-4 py-2 bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 rounded-lg text-sm font-medium transition"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      onClick={salvarTipo}
+                      className="px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-lg text-sm font-medium transition shadow-md"
+                    >
+                      Salvar
+                    </button>
+                  </div>
                 </div>
               </div>
             </Modal>
@@ -360,6 +320,36 @@ export const TiposUsuario = () => {
         )}
       </AnimatePresence>
 
+      {/* --- MODAL ERRO --- */}
+      <AnimatePresence>
+        {mostrarErroModal && (
+          <motion.div
+            className="fixed inset-0 z-[60] flex items-center justify-center p-4"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+          >
+            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={fecharErroModal} />
+
+            <motion.div
+              className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 w-full max-w-sm text-center relative z-10"
+              initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}
+            >
+              <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+                <AlertTriangle size={32} className="text-red-500" />
+              </div>
+              <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-2">Ação Bloqueada</h3>
+              <p className="text-gray-500 dark:text-gray-400 text-sm mb-6 leading-relaxed">
+                {mensagemErroModal}
+              </p>
+              <button
+                onClick={fecharErroModal}
+                className="w-full py-2.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 rounded-lg font-medium transition"
+              >
+                Entendi
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
     </div>
   )

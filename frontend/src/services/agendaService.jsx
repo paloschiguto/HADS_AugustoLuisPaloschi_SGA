@@ -6,12 +6,12 @@ const api = axios.create({
 })
 
 export const fetchPacientes = async () => {
-    const res = await api.get('/pacientes') // Ajuste se sua rota for diferente
+    const res = await api.get('/pacientes')
     return res.data
 }
 
 export const fetchMedicamentos = async () => {
-    const res = await api.get('/medicamentos') // Ajuste se sua rota for diferente
+    const res = await api.get('/medicamentos') 
     return res.data
 }
 

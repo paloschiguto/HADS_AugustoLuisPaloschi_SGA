@@ -1,5 +1,16 @@
 import { useEffect, useState } from 'react'
-import { Pencil } from 'lucide-react'
+import {
+  Pencil,
+  Plus,
+  Search,
+  Trash2,
+  FileText,
+  Activity,
+  MapPin,
+  ClipboardList,
+  Thermometer,
+  Weight
+} from 'lucide-react'
 import Modal from '../components/modal'
 import Select from 'react-select'
 import { useAuth } from '../services/authContext'
@@ -9,9 +20,7 @@ import {
   createAtendimento,
   atualizarAtendimento,
   excluirAtendimento,
-  createMedicamentoAtend,
-  atualizarMedicamentoAtend,
-  excluirMedicamentoAtend
+  createMedicamentoAtend
 } from '../services/atendimentoService'
 import { fetchPacientes } from '../services/pacienteService'
 import { fetchUsuarios } from '../services/usuarioService'
@@ -19,7 +28,13 @@ import { fetchMedicamentos } from '../services/medicamentoService'
 
 export const Atendimentos = () => {
   const { user } = useAuth()
+
   const [atendimentos, setAtendimentos] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [busca, setBusca] = useState('')
+
+  const [isDarkMode, setIsDarkMode] = useState(document.documentElement.classList.contains('dark'))
+
   const [modalAberto, setModalAberto] = useState(false)
   const [atendimentoSelecionado, setAtendimentoSelecionado] = useState(null)
 
@@ -36,27 +51,54 @@ export const Atendimentos = () => {
   const [peso, setPeso] = useState('')
   const [diagnostico, setDiagnostico] = useState('')
 
-
   const [usuarios, setUsuarios] = useState([])
   const [pacientes, setPacientes] = useState([])
   const [medicamentos, setMedicamentos] = useState([])
 
   const [erros, setErros] = useState({})
 
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      setIsDarkMode(document.documentElement.classList.contains('dark'))
+    })
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
+    return () => observer.disconnect()
+  }, [])
+
+
   const carregarDados = async () => {
+    setLoading(true)
     try {
-      setAtendimentos(await fetchAtendimentos())
-      setUsuarios(await fetchUsuarios())
-      setPacientes(await fetchPacientes())
-      setMedicamentos(await fetchMedicamentos())
+      const [atendData, userData, pacData, medData] = await Promise.all([
+        fetchAtendimentos(),
+        fetchUsuarios(),
+        fetchPacientes(),
+        fetchMedicamentos()
+      ])
+      setAtendimentos(atendData)
+      setUsuarios(userData)
+      setPacientes(pacData)
+      setMedicamentos(medData)
     } catch (err) {
       console.error('Erro ao carregar dados:', err)
+    } finally {
+      setLoading(false)
     }
   }
 
   useEffect(() => {
     carregarDados()
   }, [])
+
+  const listaFiltrada = atendimentos.filter(a => {
+    if (!busca) return true
+    const termo = busca.toLowerCase()
+    return (
+      a.paciente?.nome?.toLowerCase().includes(termo) ||
+      a.descricao?.toLowerCase().includes(termo) ||
+      a.id.toString().includes(termo)
+    )
+  })
 
   const abrirModal = (atendimento = null) => {
     if (atendimento) {
@@ -67,12 +109,10 @@ export const Atendimentos = () => {
       setObs(atendimento.obs || '')
       setFinalizado(atendimento.finalizado || false)
       setDiagnostico(atendimento.diagnostico || '')
-
       setCidade(atendimento.cidade || '')
       setUf(atendimento.uf || '')
       setTemperatura(atendimento.temperatura || '')
       setPeso(atendimento.peso || '')
-
       setMedicamentosSelected(atendimento.medicamentos || [])
     } else {
       setAtendimentoSelecionado(null)
@@ -81,16 +121,13 @@ export const Atendimentos = () => {
       setDescricao('')
       setObs('')
       setFinalizado(false)
-
       setCidade('')
       setUf('')
       setTemperatura('')
       setPeso('')
       setDiagnostico('')
-
       setMedicamentosSelected([])
     }
-
     setErros({})
     setModalAberto(true)
   }
@@ -101,43 +138,38 @@ export const Atendimentos = () => {
     setErros({})
   }
 
-  const validarCampos = () => {
+  const salvarAtendimento = async () => {
     const novosErros = {}
     if (!pacienteId) novosErros.pacienteId = 'Selecione um paciente'
     if (!descricao) novosErros.descricao = 'Descrição é obrigatória'
-    return novosErros
-  }
 
-  const salvarAtendimento = async () => {
-    const validacao = validarCampos()
-    if (Object.keys(validacao).length) {
-      setErros(validacao)
+    if (Object.keys(novosErros).length) {
+      setErros(novosErros)
       return
     }
 
     const payload = {
-      usuId: Number(usuarioId),
+      usuId: Number(usuarioId) || user.id,
       pacId: Number(pacienteId),
       descricao,
       obs,
       cidade,
       uf,
-      temperatura,
-      peso,
+      temperatura: temperatura ? parseFloat(temperatura) : null,
+      peso: peso ? parseFloat(peso) : null,
       diagnostico,
       finalizado
     }
 
     try {
       let atendimentoCriado
-
       if (atendimentoSelecionado) {
         atendimentoCriado = await atualizarAtendimento(atendimentoSelecionado.id, payload)
       } else {
         atendimentoCriado = await createAtendimento(payload)
       }
 
-      if (medicamentosSelected.length) {
+      if (medicamentosSelected.length > 0) {
         for (const m of medicamentosSelected) {
           await createMedicamentoAtend({
             atendimentoId: Number(atendimentoCriado.id),
@@ -150,15 +182,12 @@ export const Atendimentos = () => {
         }
       }
 
-
       await carregarDados()
       fecharModal()
     } catch (err) {
       console.error('Erro ao salvar atendimento:', err)
     }
   }
-
-
 
   const confirmarExclusao = async () => {
     if (!atendimentoSelecionado) return
@@ -177,174 +206,261 @@ export const Atendimentos = () => {
     setMedicamentosSelected(updated)
   }
 
+  const selectStyles = {
+    control: (base, state) => ({
+      ...base,
+      backgroundColor: isDarkMode ? '#374151' : 'white',
+      borderColor: state.isFocused ? '#2563EB' : isDarkMode ? '#4B5563' : '#D1D5DB',
+      minHeight: '38px',
+      fontSize: '0.875rem',
+      borderRadius: '0.375rem',
+      color: isDarkMode ? 'white' : 'black'
+    }),
+    menu: (base) => ({
+      ...base,
+      backgroundColor: isDarkMode ? '#1F2937' : 'white',
+      zIndex: 9999
+    }),
+    option: (base, state) => ({
+      ...base,
+      backgroundColor: state.isFocused ? '#2563EB' : 'transparent',
+      color: state.isFocused ? 'white' : isDarkMode ? '#F3F4F6' : '#111827',
+      cursor: 'pointer',
+      fontSize: '0.875rem',
+      padding: '6px 10px'
+    }),
+    singleValue: (base) => ({
+      ...base,
+      color: isDarkMode ? '#F3F4F6' : '#111827'
+    }),
+    input: (base) => ({
+      ...base,
+      color: isDarkMode ? '#F3F4F6' : '#111827'
+    }),
+    multiValue: (base) => ({
+      ...base,
+      backgroundColor: isDarkMode ? '#4B5563' : '#DBEAFE',
+      borderRadius: '4px'
+    }),
+    multiValueLabel: (base) => ({
+      ...base,
+      color: isDarkMode ? '#F3F4F6' : '#1E40AF',
+      fontSize: '0.8rem'
+    }),
+    multiValueRemove: (base) => ({
+      ...base,
+      color: isDarkMode ? '#F3F4F6' : '#1E40AF',
+      ':hover': { backgroundColor: '#EF4444', color: 'white' }
+    })
+  }
 
+  const inputClass = "w-full p-2 rounded bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-sm dark:text-white"
 
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-semibold mb-4 text-center text-textPrimary dark:text-gray-200">
-        Atendimentos
-      </h1>
+    <div className="p-6 min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
 
-      <div className="max-w-6xl mx-auto flex justify-end mb-6">
-        <button
-          onClick={() => abrirModal()}
-          className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition"
-        >
-          Novo Atendimento
-        </button>
-      </div>
+      {/* CABEÇALHO */}
+      <div className="max-w-7xl mx-auto mb-6 flex flex-col md:flex-row justify-between items-center gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-textPrimary dark:text-gray-100 flex items-center gap-2">
+            Atendimentos
+          </h1>
+        </div>
 
-      <div className="max-w-6xl mx-auto grid grid-cols-[80px_200px_200px_200px_150px_100px] gap-4 px-4 py-2 font-semibold bg-gray-100 dark:bg-gray-700 rounded-t">
-        <span>Código</span>
-        <span>Usuário</span>
-        <span>Paciente</span>
-        <span>Descrição</span>
-        <span>Status</span>
-        <span>Ações</span>
-      </div>
+        <div className="flex gap-3 w-full md:w-auto">
+          <div className="relative flex-1 md:w-64">
+            <Search className="absolute left-3 top-2.5 text-gray-400" size={18} />
+            <input
+              type="text"
+              placeholder="Buscar..."
+              value={busca}
+              onChange={e => setBusca(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm text-sm dark:text-white"
+            />
+          </div>
 
-      <ul className="max-w-6xl mx-auto bg-white dark:bg-gray-800 rounded-b shadow-md divide-y divide-gray-200 dark:divide-gray-700">
-        {atendimentos.map((a) => (
-          <li
-            key={a.id}
-            className="grid grid-cols-[80px_200px_200px_200px_150px_100px] gap-4 items-center px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors rounded"
+          <button
+            onClick={() => abrirModal()}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition shadow-md whitespace-nowrap text-sm"
           >
-            <span className="text-textPrimary dark:text-gray-100">{a.id}</span>
-            <span className="text-textPrimary dark:text-gray-100">{a.usuario?.nome}</span>
-            <span className="text-textPrimary dark:text-gray-100">{a.paciente?.nome}</span>
-            <span className="text-gray-500 dark:text-gray-300">{a.descricao}</span>
-            <span className="text-gray-500 dark:text-gray-300">{a.finalizado ? 'Finalizado' : 'Aberto'}</span>
-            <button
-              onClick={() => abrirModal(a)}
-              className="flex items-center text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 gap-1 transition-colors"
-            >
-              <Pencil size={18} className="m-0 p-0" />
-              Editar
-            </button>
-          </li>
-        ))}
-      </ul>
+            <Plus size={18} /> <span className="hidden sm:inline">Novo Atendimento</span>
+          </button>
+        </div>
+      </div>
 
+      {/* TABELA */}
+      <div className="max-w-7xl mx-auto bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-gray-50 dark:bg-gray-700/50 text-xs uppercase text-gray-500 dark:text-gray-400 font-semibold">
+                <th className="px-6 py-3">Código</th>
+                <th className="px-6 py-3">Paciente</th>
+                <th className="px-6 py-3">Profissional</th>
+                <th className="px-6 py-3">Descrição</th>
+                <th className="px-6 py-3">Status</th>
+                <th className="px-6 py-3 text-right">Ações</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+              {loading ? (
+                <tr><td colSpan="6" className="px-6 py-6 text-center text-gray-500 text-sm">Carregando dados...</td></tr>
+              ) : listaFiltrada.length === 0 ? (
+                <tr><td colSpan="6" className="px-6 py-6 text-center text-gray-500 text-sm">Nenhum atendimento encontrado.</td></tr>
+              ) : (
+                listaFiltrada.map((a) => (
+                  <tr key={a.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
+                    <td className="px-6 py-3 text-sm text-gray-500 dark:text-gray-400">{a.id}</td>
+                    <td className="px-6 py-3 font-medium text-gray-900 dark:text-gray-100 text-sm">{a.paciente?.nome}</td>
+                    <td className="px-6 py-3 text-sm text-gray-600 dark:text-gray-300">{a.usuario?.nome}</td>
+                    <td className="px-6 py-3 text-sm text-gray-500 dark:text-gray-400 max-w-xs truncate">{a.descricao}</td>
+                    <td className="px-6 py-3">
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] uppercase font-bold tracking-wide ${a.finalizado ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'}`}>
+                        {a.finalizado ? 'Concluído' : 'Aberto'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-3 text-right">
+                      <button onClick={() => abrirModal(a)} className="text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors p-1.5 rounded-full hover:bg-blue-50 dark:hover:bg-gray-700" title="Editar">
+                        <Pencil size={16} />
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* --- MODAL COMPACTO --- */}
       <AnimatePresence>
         {modalAberto && (
-          <>
-            <motion.div
-              className="fixed inset-0 backdrop-blur-sm bg-black/20 z-40"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-            />
+          <motion.div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-hidden"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+          >
+            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={fecharModal} />
 
             <Modal
               isOpen={modalAberto}
-              title={atendimentoSelecionado ? 'Editar Atendimento' : 'Novo Atendimento'}
+              title={atendimentoSelecionado ? 'Editar' : 'Novo Atendimento'}
               onClose={fecharModal}
+              maxWidth="max-w-3xl w-full"
             >
-              <div className="space-y-8">
+              <div className="flex flex-col max-h-[85vh]">
 
-                {/* ===================== */}
-                {/* SEÇÃO: DADOS DO ATENDIMENTO */}
-                {/* ===================== */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                    Informações do Atendimento
-                  </h3>
+                {/* ÁREA DE CONTEÚDO SCROLLABLE */}
+                <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar p-1">
+                  <div className="space-y-3">
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
-                    {/* Usuário Responsável */}
-                    <div>
-                      <input
-                        type="text"
-                        value={user?.nome || 'Usuário Logado'}
-                        disabled
-                        className="w-full p-2 rounded-md bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 cursor-not-allowed"
-                      />
+                    {/* 1. Contexto */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-medium mb-1 dark:text-gray-300">Paciente *</label>
+                        <select value={pacienteId} onChange={(e) => setPacienteId(e.target.value)} className={`${inputClass} ${erros.pacienteId ? 'border-red-500' : ''}`}>
+                          <option value="">Selecione...</option>
+                          {pacientes.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
+                        </select>
+                        {erros.pacienteId && <p className="text-red-500 text-[10px] mt-0.5">{erros.pacienteId}</p>}
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium mb-1 dark:text-gray-300">Profissional</label>
+                        <input type="text" value={user?.nome} disabled className={`${inputClass} opacity-60 cursor-not-allowed`} />
+                      </div>
                     </div>
 
-                    {/* Paciente */}
-                    <div>
-                      {erros.pacienteId && <p className="text-red-500 text-sm">{erros.pacienteId}</p>}
-                      <select
-                        value={pacienteId}
-                        onChange={(e) => setPacienteId(e.target.value)}
-                        className="w-full p-2 rounded-md bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600"
-                      >
-                        <option value="">Selecione o paciente</option>
-                        {pacientes.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
-                      </select>
+                    {/* 2. Sinais Vitais (Compacto) */}
+                    <div className="bg-gray-50 dark:bg-gray-700/30 p-3 rounded-lg border border-gray-100 dark:border-gray-600">
+                      <h4 className="text-xs font-bold text-gray-600 dark:text-gray-300 mb-2 flex items-center gap-1">
+                        <Activity size={14} className="text-blue-500" /> Sinais Vitais
+                      </h4>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                        <div className="relative">
+                          <Thermometer size={14} className="absolute left-2.5 top-2.5 text-gray-400" />
+                          <input type="number" step="0.1" placeholder="Temp" value={temperatura} onChange={e => setTemperatura(e.target.value)} className={`${inputClass} pl-8`} />
+                        </div>
+                        <div className="relative">
+                          <Weight size={14} className="absolute left-2.5 top-2.5 text-gray-400" />
+                          <input type="number" step="0.1" placeholder="Peso" value={peso} onChange={e => setPeso(e.target.value)} className={`${inputClass} pl-8`} />
+                        </div>
+                        <div className="relative">
+                          <MapPin size={14} className="absolute left-2.5 top-2.5 text-gray-400" />
+                          <input type="text" placeholder="Cidade" value={cidade} onChange={e => setCidade(e.target.value)} className={`${inputClass} pl-8`} />
+                        </div>
+                        <div>
+                          <input type="text" placeholder="UF" maxLength={2} value={uf} onChange={e => setUf(e.target.value.toUpperCase())} className={`${inputClass} uppercase text-center`} />
+                        </div>
+                      </div>
                     </div>
 
-                    {/* Cidade */}
-                    <input
-                      type="text"
-                      value={cidade}
-                      onChange={e => setCidade(e.target.value)}
-                      placeholder="Cidade"
-                      className="w-full p-2 rounded-md bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600"
-                    />
-
-                    {/* UF */}
-                    <input
-                      type="text"
-                      maxLength={2}
-                      value={uf}
-                      onChange={e => setUf(e.target.value.toUpperCase())}
-                      placeholder="UF"
-                      className="w-full p-2 uppercase rounded-md bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600"
-                    />
-
-                    {/* Temperatura */}
-                    <input
-                      type="number"
-                      step="0.1"
-                      value={temperatura}
-                      onChange={e => setTemperatura(e.target.value)}
-                      placeholder="Temperatura (°C)"
-                      className="w-full p-2 rounded-md bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 no-spin"
-                    />
-
-                    {/* Peso */}
-                    <input
-                      type="number"
-                      step="0.1"
-                      value={peso}
-                      onChange={e => setPeso(e.target.value)}
-                      placeholder="Peso (kg)"
-                      className="w-full p-2 rounded-md bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 no-spin"
-                    />
-
-                    {/* Descrição */}
-                    <div className="col-span-full">
-                      {erros.descricao && <p className="text-red-500 text-sm mb-1">{erros.descricao}</p>}
-                      <textarea
-                        rows={3}
-                        value={descricao}
-                        onChange={e => setDescricao(e.target.value)}
-                        placeholder="Descrição do atendimento"
-                        className="w-full p-2 rounded-md bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600"
-                      />
+                    {/* 3. Dados Clínicos */}
+                    <div className="space-y-2">
+                      <div>
+                        <label className="block text-xs font-medium mb-1 dark:text-gray-300">Descrição *</label>
+                        <textarea rows={2} value={descricao} onChange={e => setDescricao(e.target.value)} className={inputClass} placeholder="Motivo..." />
+                        {erros.descricao && <p className="text-red-500 text-[10px] mt-0.5">{erros.descricao}</p>}
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-medium mb-1 dark:text-gray-300">Diagnóstico</label>
+                          <input type="text" value={diagnostico} onChange={e => setDiagnostico(e.target.value)} className={inputClass} />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium mb-1 dark:text-gray-300">Observações</label>
+                          <input type="text" value={obs} onChange={e => setObs(e.target.value)} className={inputClass} />
+                        </div>
+                      </div>
                     </div>
 
-                    {/* Diagnóstico */}
-                    <textarea
-                      rows={2}
-                      value={diagnostico}
-                      onChange={e => setDiagnostico(e.target.value)}
-                      placeholder="Diagnóstico"
-                      className="w-full p-2 rounded-md bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 col-span-full"
-                    />
+                    {/* 4. Medicamentos */}
+                    <div className="border-t pt-3 dark:border-gray-600">
+                      <h4 className="text-xs font-bold text-gray-600 dark:text-gray-300 mb-2 flex items-center gap-1">
+                        <FileText size={14} className="text-purple-500" /> Prescrição
+                      </h4>
 
-                    {/* Observação */}
-                    <textarea
-                      rows={2}
-                      value={obs}
-                      onChange={e => setObs(e.target.value)}
-                      placeholder="Observações"
-                      className="w-full p-2 rounded-md bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 col-span-full"
-                    />
+                      <div className="mb-3">
+                        <Select
+                          isMulti
+                          placeholder="Adicionar..."
+                          options={medicamentos.map(m => ({ value: m.id, label: m.descricao }))}
+                          value={medicamentosSelected.map(m => ({ value: m.medicamentoId, label: medicamentos.find(x => x.id === m.medicamentoId)?.descricao || 'Item' }))}
+                          styles={selectStyles}
+                          onChange={(selected) => {
+                            const novos = selected.map(sel => {
+                              const existente = medicamentosSelected.find(m => m.medicamentoId === sel.value)
+                              return existente || { medicamentoId: sel.value, dosagem: '', frequencia: '', duracao: '', observacao: '' }
+                            })
+                            setMedicamentosSelected(novos)
+                          }}
+                        />
+                      </div>
 
-                    <label className="flex items-center gap-3 col-span-full cursor-pointer select-none">
+                      <div className="space-y-2">
+                        {medicamentosSelected.map((m, index) => {
+                          const medInfo = medicamentos.find(x => x.id === m.medicamentoId)
+                          return (
+                            <div key={index} className="bg-gray-50 dark:bg-gray-700/50 p-2 rounded border border-gray-200 dark:border-gray-600 grid grid-cols-2 md:grid-cols-4 gap-2 items-center">
+                              <div className="col-span-2 md:col-span-4 font-semibold text-xs text-gray-700 dark:text-gray-200 flex items-center gap-1">
+                                <div className="w-1.5 h-1.5 rounded-full bg-purple-500"></div>
+                                {medInfo?.descricao}
+                              </div>
+                              <input type="text" placeholder="Dose" value={m.dosagem} onChange={e => updateMedicamento(index, 'dosagem', e.target.value)} className={inputClass} />
+                              <input type="text" placeholder="Freq." value={m.frequencia} onChange={e => updateMedicamento(index, 'frequencia', e.target.value)} className={inputClass} />
+                              <input type="text" placeholder="Dur." value={m.duracao} onChange={e => updateMedicamento(index, 'duracao', e.target.value)} className={inputClass} />
+                              <input type="text" placeholder="Obs." value={m.observacao} onChange={e => updateMedicamento(index, 'observacao', e.target.value)} className={inputClass} />
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+
+                  </div>
+                </div>
+
+                {/* RODAPÉ FIXO */}
+                <div className="mt-3 pt-3 border-t dark:border-gray-600 bg-white dark:bg-gray-800 z-10">
+                  <div className="flex flex-col md:flex-row justify-between items-center gap-3">
+                    <label className="flex items-center gap-3 cursor-pointer select-none">
                       <div className="relative">
                         <input
                           type="checkbox"
@@ -352,166 +468,30 @@ export const Atendimentos = () => {
                           onChange={() => setFinalizado(!finalizado)}
                           className="sr-only peer"
                         />
-
-                        {/* Switch */}
-                        <div className="
-                            w-11 h-6 rounded-full 
-                            bg-gray-300 dark:bg-gray-600
-                            peer-checked:bg-blue-600 
-                            transition-colors
-                          "></div>
-
-                        {/* Bolinha */}
-                        <div className="
-                            absolute top-0.5 left-0.5 
-                            w-5 h-5 rounded-full 
-                            bg-white dark:bg-gray-200
-                            transition-all peer-checked:translate-x-5
-                          "></div>
+                        {/* Fundo do Switch (Track) */}
+                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                       </div>
-
-                      <span className="text-gray-900 dark:text-gray-100">
-                        Atendimento finalizado
-                      </span>
+                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Finalizar atendimento</span>
                     </label>
 
-
+                    <div className="flex gap-2 w-full md:w-auto justify-end">
+                      {atendimentoSelecionado && (
+                        <button
+                          onClick={confirmarExclusao}
+                          className="px-3 py-1.5 bg-red-600 text-white hover:bg-red-700 rounded text-xs font-medium transition flex items-center gap-1 shadow-sm"
+                        >
+                          <Trash2 size={14} /> Excluir
+                        </button>
+                      )}
+                      <button onClick={fecharModal} className="px-3 py-1.5 bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 rounded text-xs font-medium transition">Cancelar</button>
+                      <button onClick={salvarAtendimento} className="px-3 py-1.5 bg-blue-600 text-white hover:bg-blue-700 rounded text-xs font-medium transition shadow-sm">Salvar</button>
+                    </div>
                   </div>
                 </div>
 
-                {/* ===================== */}
-                {/* SEÇÃO: MEDICAMENTOS */}
-                {/* ===================== */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 " >
-                    Medicamentos
-                  </h3>
-
-                  <Select
-                    isMulti
-                    options={medicamentos.map(m => ({ value: m.id, label: m.descricao }))}
-                    value={medicamentosSelected.map(m => {
-                      const med = medicamentos.find(x => x.id === m.medicamentoId)
-                      return { value: m.medicamentoId, label: med?.descricao || 'Medicamento' }
-                    })}
-                    styles={{
-                      control: (base, state) => ({
-                        ...base,
-                        backgroundColor: document.documentElement.classList.contains('dark') ? '#374151' : 'white',
-                        borderColor: state.isFocused ? '#3B82F6' : document.documentElement.classList.contains('dark') ? '#4B5563' : '#D1D5DB',
-                        boxShadow: state.isFocused ? '0 0 0 1px #3B82F6' : 'none'
-                      }),
-                      menu: (base) => ({ ...base, backgroundColor: document.documentElement.classList.contains('dark') ? '#1F2937' : 'white' }),
-                      option: (base, state) => ({
-                        ...base,
-                        backgroundColor: state.isFocused ? '#3B82F6' : document.documentElement.classList.contains('dark') ? '#1F2937' : 'white',
-                        color: state.isFocused ? 'white' : document.documentElement.classList.contains('dark') ? '#F9FAFB' : '#111827'
-                      }),
-                      multiValue: (base) => ({
-                        ...base,
-                        backgroundColor: document.documentElement.classList.contains('dark') ? '#4B5563' : '#E5E7EB'
-                      }),
-                      multiValueLabel: (base) => ({
-                        ...base,
-                        color: document.documentElement.classList.contains('dark') ? '#F9FAFB' : '#111827'
-                      }),
-                      multiValueRemove: (base) => ({
-                        ...base,
-                        color: document.documentElement.classList.contains('dark') ? '#F9FAFB' : '#111827',
-                        ':hover': { backgroundColor: '#EF4444', color: 'white' }
-                      })
-                    }}
-                    onChange={(selected) => {
-                      const novos = selected.map(sel => {
-                        const existente = medicamentosSelected.find(m => m.medicamentoId === sel.value)
-                        return existente || {
-                          medicamentoId: sel.value,
-                          dosagem: '',
-                          frequencia: '',
-                          duracao: '',
-                          observacao: ''
-                        }
-                      })
-                      setMedicamentosSelected(novos)
-                    }}
-                  />
-
-                  {/* Inputs individuais por medicamento */}
-                  {medicamentosSelected.map((m, index) => {
-                    const medInfo = medicamentos.find(x => x.id === m.medicamentoId)
-
-                    return (
-                      <div key={index} className="p-4 border rounded-md border-gray-300 dark:border-gray-500 dark:bg-gray-700 space-y-3">
-                        <h4 className="font-semibold ">
-                          {medInfo?.descricao || 'Medicamento'}
-                        </h4>
-
-                        <input
-                          type="text"
-                          placeholder="Dosagem"
-                          className="w-full p-2 rounded-md bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 text-gray-900 dark:text-gray-100"
-                          value={m.dosagem}
-                          onChange={(e) => updateMedicamento(index, 'dosagem', e.target.value)}
-                        />
-
-                        <input
-                          type="text"
-                          placeholder="Frequência"
-                          className="w-full p-2 rounded-md bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 text-gray-900 dark:text-gray-100"
-                          value={m.frequencia}
-                          onChange={(e) => updateMedicamento(index, 'frequencia', e.target.value)}
-                        />
-
-                        <input
-                          type="text"
-                          placeholder="Duração"
-                          className="w-full p-2 rounded-md bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 text-gray-900 dark:text-gray-100"
-                          value={m.duracao}
-                          onChange={(e) => updateMedicamento(index, 'duracao', e.target.value)}
-                        />
-
-                        <textarea
-                          placeholder="Observação"
-                          className="w-full p-2 rounded-md bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 text-gray-900 dark:text-gray-100"
-                          value={m.observacao}
-                          onChange={(e) => updateMedicamento(index, 'observacao', e.target.value)}
-                        />
-                      </div>
-                    )
-                  })}
-                </div>
-
-                {/* BOTÕES */}
-                <div className="flex justify-between pt-4 border-t dark:border-gray-600">
-
-                  {atendimentoSelecionado && (
-                    <button
-                      onClick={confirmarExclusao}
-                      className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700"
-                    >
-                      Excluir
-                    </button>
-                  )}
-
-                  <div className="flex gap-3 ml-auto">
-                    <button
-                      onClick={fecharModal}
-                      className="px-4 py-2 bg-gray-300 dark:bg-gray-700 dark:text-white rounded-md hover:bg-gray-400 dark:hover:bg-gray-600"
-                    >
-                      Cancelar
-                    </button>
-
-                    <button
-                      onClick={salvarAtendimento}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-                    >
-                      Salvar
-                    </button>
-                  </div>
-                </div>
               </div>
             </Modal>
-          </>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>
