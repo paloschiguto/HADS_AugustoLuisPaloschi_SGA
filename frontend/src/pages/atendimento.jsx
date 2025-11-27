@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Pencil } from 'lucide-react'
 import Modal from '../components/modal'
 import Select from 'react-select'
+import { useAuth } from '../services/authContext'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
   fetchAtendimentos,
@@ -17,6 +18,7 @@ import { fetchUsuarios } from '../services/usuarioService'
 import { fetchMedicamentos } from '../services/medicamentoService'
 
 export const Atendimentos = () => {
+  const { user } = useAuth()
   const [atendimentos, setAtendimentos] = useState([])
   const [modalAberto, setModalAberto] = useState(false)
   const [atendimentoSelecionado, setAtendimentoSelecionado] = useState(null)
@@ -101,7 +103,6 @@ export const Atendimentos = () => {
 
   const validarCampos = () => {
     const novosErros = {}
-    if (!usuarioId) novosErros.usuarioId = 'Selecione um usuário'
     if (!pacienteId) novosErros.pacienteId = 'Selecione um paciente'
     if (!descricao) novosErros.descricao = 'Descrição é obrigatória'
     return novosErros
@@ -139,7 +140,7 @@ export const Atendimentos = () => {
       if (medicamentosSelected.length) {
         for (const m of medicamentosSelected) {
           await createMedicamentoAtend({
-            atendimentoId: atendimentoCriado.id,
+            atendimentoId: Number(atendimentoCriado.id),
             medicamentoId: Number(m.medicamentoId || m.id),
             frequencia: m.frequencia,
             duracao: m.duracao || '',
@@ -251,17 +252,14 @@ export const Atendimentos = () => {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-                    {/* Usuário */}
+                    {/* Usuário Responsável */}
                     <div>
-                      {erros.usuarioId && <p className="text-red-500 text-sm">{erros.usuarioId}</p>}
-                      <select
-                        value={usuarioId}
-                        onChange={(e) => setUsuarioId(e.target.value)}
-                        className="w-full p-2 rounded-md bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600"
-                      >
-                        <option value="">Selecione o usuário</option>
-                        {usuarios.map(u => <option key={u.id} value={u.id}>{u.nome}</option>)}
-                      </select>
+                      <input
+                        type="text"
+                        value={user?.nome || 'Usuário Logado'}
+                        disabled
+                        className="w-full p-2 rounded-md bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 cursor-not-allowed"
+                      />
                     </div>
 
                     {/* Paciente */}
@@ -303,7 +301,7 @@ export const Atendimentos = () => {
                       value={temperatura}
                       onChange={e => setTemperatura(e.target.value)}
                       placeholder="Temperatura (°C)"
-                      className="w-full p-2 rounded-md bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600"
+                      className="w-full p-2 rounded-md bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 no-spin"
                     />
 
                     {/* Peso */}
@@ -313,7 +311,7 @@ export const Atendimentos = () => {
                       value={peso}
                       onChange={e => setPeso(e.target.value)}
                       placeholder="Peso (kg)"
-                      className="w-full p-2 rounded-md bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600"
+                      className="w-full p-2 rounded-md bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 no-spin"
                     />
 
                     {/* Descrição */}
