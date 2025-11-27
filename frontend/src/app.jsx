@@ -9,6 +9,7 @@ import { Usuarios } from './pages/usuarios'
 import { Pacientes } from './pages/pacientes'
 import { Medicamentos } from './pages/medicamentos'
 import { Atendimentos } from './pages/atendimento'
+import { Agenda } from './pages/agenda'
 
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth()
@@ -53,6 +54,10 @@ function App() {
               <Route
                 path="atendimentos"
                 element={<ProtectedRoute modulo="Atendimento"><Atendimentos /></ProtectedRoute>}
+              />
+              <Route
+                path="agenda"
+                element={<ProtectedRoute modulo="Agenda"><Agenda /></ProtectedRoute>}
               />
             </Route>
           </Routes>

@@ -3,12 +3,20 @@ import { prisma } from '../prismaClient'
 import { Prisma } from '@prisma/client'
 import jwt from 'jsonwebtoken'
 
-const getUserIdFromReq = (req: Request): number | null => {
-  const token = req.cookies?.token
+const getUserIdFromReq = (req: Request) => {
+  let token = req.cookies?.token
+
+  if (!token) {
+    const authHeader = req.headers.authorization
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.split(' ')[1]
+    }
+  }
+
   if (!token) return null
+
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { id: number }
-    return decoded.id
+    return jwt.verify(token, process.env.JWT_SECRET!) as { id: number, permissoes: string[] }
   } catch {
     return null
   }
@@ -65,7 +73,7 @@ export const createMedicamento = async (req: Request, res: Response) => {
       data: {
         descricao,
         dosagem,
-        createdBy: userId,
+        createdBy: userId.id,
         createdOn: new Date()
       }
     })
@@ -86,7 +94,7 @@ export const updateMedicamento = async (req: Request, res: Response) => {
     const medicamentoExistente = await findMedicamentoById(Number(id))
     if (!medicamentoExistente) return res.status(404).json({ error: 'Medicamento não encontrado' })
 
-    const dataToUpdate: Prisma.MedicamentoUpdateInput = { modifiedOn: new Date(), modifiedBy: userId }
+    const dataToUpdate: Prisma.MedicamentoUpdateInput = { modifiedOn: new Date(), modifiedBy: userId.id }
 
     if (descricao !== undefined) dataToUpdate.descricao = descricao
     if (dosagem !== undefined) dataToUpdate.dosagem = dosagem

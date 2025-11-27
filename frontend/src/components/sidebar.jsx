@@ -43,8 +43,11 @@ export default function Sidebar() {
 
       {/* Sidebar */}
       <aside
+        // AQUI ESTÁ A MUDANÇA PRINCIPAL:
+        // Troquei "md:static" por "md:sticky md:top-0"
         className={`bg-surface dark:bg-gray-800 w-64 h-screen border-r border-gray-200 dark:border-gray-700 p-6 flex flex-col transition-transform
-          ${open ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 fixed md:static z-50`}
+          ${open ? 'translate-x-0' : '-translate-x-full'} 
+          md:translate-x-0 fixed md:sticky md:top-0 z-50`}
       >
         {/* Botão fechar mobile */}
         <button className="md:hidden self-end mb-4 text-textPrimary dark:text-gray-200" onClick={() => setOpen(false)}>
@@ -77,6 +80,9 @@ export default function Sidebar() {
             )}
             {permissoes.includes("Atendimento") && (
               <Link to="/atendimentos" onClick={handleLinkClick} className="text-textPrimary dark:text-gray-200 font-semibold px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition">Atendimentos</Link>
+            )}
+            {permissoes.includes("Agenda") && (
+              <Link to="/agenda" onClick={handleLinkClick} className="text-textPrimary dark:text-gray-200 font-semibold px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition">Agenda</Link>
             )}
           </nav>
         </div>

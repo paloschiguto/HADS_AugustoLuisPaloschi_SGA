@@ -3,12 +3,20 @@ import { prisma } from '../prismaClient'
 import jwt from 'jsonwebtoken'
 import { Prisma } from '@prisma/client'
 
-const getUserIdFromReq = (req: Request): number | null => {
-  const token = req.cookies?.token
+const getUserIdFromReq = (req: Request) => {
+  let token = req.cookies?.token
+
+  if (!token) {
+    const authHeader = req.headers.authorization
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.split(' ')[1]
+    }
+  }
+
   if (!token) return null
+
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { id: number }
-    return decoded.id
+    return jwt.verify(token, process.env.JWT_SECRET!) as { id: number, permissoes: string[] }
   } catch {
     return null
   }
@@ -99,7 +107,7 @@ export const createAtendimento = async (req: Request, res: Response) => {
         temperatura: temperatura ? Number(temperatura) : null,
         peso: peso ? Number(peso) : null,
         finalizado: finalizado ?? false,
-        createdBy: userId,
+        createdBy: userId.id,
         pacId: Number(pacId)
       }
     })
@@ -140,7 +148,7 @@ export const updateAtendimento = async (req: Request, res: Response) => {
 
     const dataToUpdate: Prisma.AtendimentoUpdateInput = {
       modifiedOn: new Date(),
-      modifiedBy: userId
+      modifiedBy: userId.id
     }
 
     if (descricao !== undefined) dataToUpdate.descricao = descricao

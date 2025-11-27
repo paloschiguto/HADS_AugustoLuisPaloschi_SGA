@@ -37,6 +37,9 @@ model Usuario {
   atendimentos Atendimento[]
   pacientes     Paciente[]
   passwordResets PasswordReset[]
+
+  prescricoesCriadas Prescricao[] @relation("PrescricaoAuthor")
+  agendaExecutada    ItemAgenda[] @relation("AgendaExecutor")
 }
 
 // Pacientes
@@ -53,6 +56,7 @@ model Paciente {
 
   responsavel Usuario? @relation(fields: [respId], references: [id])
   atendimentos Atendimento[]
+  prescricoes Prescricao[]
 }
 
 // Medicamentos
@@ -67,6 +71,7 @@ model Medicamento {
   modifiedOn  DateTime?
 
   atendimentos MedicamentosAtend[]
+  prescricoes Prescricao[]
 }
 
 model Atendimento {
@@ -90,6 +95,7 @@ model Atendimento {
   pacId          Int
 
   medicamentos   MedicamentosAtend[]
+  agendamentoGerador ItemAgenda?
 }
 
 model MedicamentosAtend {
@@ -123,4 +129,55 @@ model Permissao {
   id          Int       @id @default(autoincrement())
   nome        String    @unique
   tipos       TipoDeUsuario[] @relation("TipoPermissoes")
+}
+
+
+// Nova Tabela: A "Ordem Médica"
+// Define a regra: "Tomar X remédio de 8 em 8 horas"
+model Prescricao {
+  id             Int       @id @default(autoincrement())
+  
+  pacienteId     Int
+  medicamentoId  Int
+  
+  dosagem        String    // Ex: "5ml", "1 comprimido"
+  frequenciaHoras Int      // Ex: 8 (para 8 em 8 horas), 24 (1x ao dia)
+  dataInicio     DateTime
+  dataFim        DateTime? // Se nulo, é uso contínuo
+  ativo          Boolean   @default(true)
+
+  // Auditoria (Seu Padrão)
+  createdBy      Int
+  createdOn      DateTime  @default(now())
+  modifiedBy     Int?
+  modifiedOn     DateTime?
+
+  // Relacionamentos
+  paciente       Paciente    @relation(fields: [pacienteId], references: [id])
+  medicamento    Medicamento @relation(fields: [medicamentoId], references: [id])
+  usuarioCriador Usuario     @relation("PrescricaoAuthor", fields: [createdBy], references: [id])
+  
+  itensAgenda    ItemAgenda[]
+}
+
+// Nova Tabela: O "Compromisso na Agenda"
+// Cada linha aqui é uma bolinha/card que vai aparecer na tela do cuidador
+model ItemAgenda {
+  id Int       @id @default(autoincrement())
+  prescricaoId Int
+  
+  dataHoraPrevista DateTime 
+  
+  status String @default("PENDENTE") 
+  
+  // Quando for realizado:
+  dataHoraRealizada DateTime?
+  realizadoPor      Int?
+
+  // Relacionamentos
+  prescricao        Prescricao @relation(fields: [prescricaoId], references: [id], onDelete: Cascade)
+  usuarioExecutor   Usuario?   @relation("AgendaExecutor", fields: [realizadoPor], references: [id])
+
+  atendimentoId Int? @unique
+  atendimento Atendimento? @relation(fields: [atendimentoId], references: [id])
 }

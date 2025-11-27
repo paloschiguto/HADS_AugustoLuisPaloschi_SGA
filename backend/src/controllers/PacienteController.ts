@@ -4,8 +4,17 @@ import { Prisma } from '@prisma/client'
 import jwt from 'jsonwebtoken'
 
 const getUserFromReq = (req: Request) => {
-  const token = req.cookies?.token
+  let token = req.cookies?.token
+
+  if (!token) {
+    const authHeader = req.headers.authorization
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.split(' ')[1]
+    }
+  }
+
   if (!token) return null
+
   try {
     return jwt.verify(token, process.env.JWT_SECRET!) as { id: number, permissoes: string[] }
   } catch {

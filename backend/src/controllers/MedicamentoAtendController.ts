@@ -3,12 +3,20 @@ import { prisma } from '../prismaClient'
 import { Prisma } from '@prisma/client'
 import jwt from 'jsonwebtoken'
 
-const getUserIdFromReq = (req: Request): number | null => {
-  const token = req.cookies?.token
+const getUserIdFromReq = (req: Request) => {
+  let token = req.cookies?.token
+
+  if (!token) {
+    const authHeader = req.headers.authorization
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.split(' ')[1]
+    }
+  }
+
   if (!token) return null
+
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { id: number }
-    return decoded.id
+    return jwt.verify(token, process.env.JWT_SECRET!) as { id: number, permissoes: string[] }
   } catch {
     return null
   }

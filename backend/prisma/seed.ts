@@ -8,7 +8,8 @@ async function main() {
     'Paciente',
     'Atendimento',
     'Usuário',
-    'Tipo de Usuário'
+    'Tipo de Usuário',
+    'Agenda'
   ]
 
   for (const nome of objetos) {
