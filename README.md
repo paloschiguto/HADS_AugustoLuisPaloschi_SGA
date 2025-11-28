@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="frontend/public/logo.png" alt="Logo SGA" width="120">
+  <img src="frontend/public/icone.png" alt="Logo SGA" width="120">
   <h1>SGA - Sistema de Gestão de Asilo</h1>
   
   <p>
