@@ -143,16 +143,35 @@ export const TiposUsuario = () => {
       minHeight: '38px',
       borderRadius: '0.375rem'
     }),
-    menu: (base) => ({ ...base, backgroundColor: isDarkMode ? '#1F2937' : 'white', zIndex: 9999 }),
+    menuPortal: (base) => ({
+      ...base,
+      zIndex: 9999 
+    }),
+    menu: (base) => ({
+      ...base,
+      backgroundColor: isDarkMode ? '#1F2937' : 'white'
+    }),
     option: (base, state) => ({
       ...base,
       backgroundColor: state.isFocused ? '#3B82F6' : 'transparent',
       color: state.isFocused ? 'white' : isDarkMode ? '#F3F4F6' : '#111827',
       cursor: 'pointer'
     }),
-    multiValue: (base) => ({ ...base, backgroundColor: isDarkMode ? '#4B5563' : '#DBEAFE', borderRadius: '4px' }),
-    multiValueLabel: (base) => ({ ...base, color: isDarkMode ? '#F3F4F6' : '#1E40AF', fontSize: '0.85rem' }),
-    multiValueRemove: (base) => ({ ...base, color: isDarkMode ? '#F3F4F6' : '#1E40AF', ':hover': { backgroundColor: '#EF4444', color: 'white' } })
+    multiValue: (base) => ({
+      ...base,
+      backgroundColor: isDarkMode ? '#4B5563' : '#DBEAFE',
+      borderRadius: '4px'
+    }),
+    multiValueLabel: (base) => ({
+      ...base,
+      color: isDarkMode ? '#F3F4F6' : '#1E40AF',
+      fontSize: '0.85rem'
+    }),
+    multiValueRemove: (base) => ({
+      ...base,
+      color: isDarkMode ? '#F3F4F6' : '#1E40AF',
+      ':hover': { backgroundColor: '#EF4444', color: 'white' }
+    })
   }
 
   // Input Helper

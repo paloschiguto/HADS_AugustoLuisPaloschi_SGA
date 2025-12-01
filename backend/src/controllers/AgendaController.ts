@@ -24,15 +24,14 @@ const getUserFromReq = (req: Request) => {
 }
 
 export const createPrescricao = async (req: Request, res: Response) => {
-  // 1. Autenticação Básica (pega ID do token)
+
   const userToken = getUserFromReq(req)
   if (!userToken) return res.status(401).json({ error: 'Usuário não autenticado' })
 
   try {
-    // 2. BUSCA NO BANCO: Pega o usuário e o Tipo dele para validar o Cargo
     const usuarioLogado = await prisma.usuario.findUnique({
       where: { id: userToken.id },
-      include: { tipo: true } // Importante: Traz a tabela TipoDeUsuario
+      include: { tipo: true } 
     })
 
     if (!usuarioLogado) {
@@ -41,9 +40,7 @@ export const createPrescricao = async (req: Request, res: Response) => {
 
     const tipoDescricao = usuarioLogado.tipo.descricao
 
-    // LOG DE DEBUG (Pode remover depois que funcionar)
     console.log(`Tentativa de prescrição por: ${usuarioLogado.nome} | Cargo: ${tipoDescricao}`)
-
 
     const cargosPermitidos = ['Médico', 'ADM']
 
@@ -53,7 +50,6 @@ export const createPrescricao = async (req: Request, res: Response) => {
       })
     }
 
-    // 4. Validação dos Dados de Entrada
     const { pacienteId, medicamentoId, dosagem, frequenciaHoras, dataInicio, dataFim } = req.body
 
     if (!pacienteId || !medicamentoId || !dosagem || !frequenciaHoras || !dataInicio) {
@@ -111,7 +107,6 @@ export const getAgendaDoDia = async (req: Request, res: Response) => {
   const user = getUserFromReq(req)
   if (!user) return res.status(401).json({ error: 'Usuário não autenticado' })
 
-  // Pega a data da query string (ex: ?data=2023-10-25) ou usa HOJE
   const dataQuery = req.query.data ? String(req.query.data) : new Date()
   const dataBusca = new Date(dataQuery)
 
@@ -146,23 +141,19 @@ export const getAgendaDoDia = async (req: Request, res: Response) => {
   }
 }
 
-// ... imports
 
 export const realizarBaixaAgenda = async (req: Request, res: Response) => {
   const user = getUserFromReq(req)
   if (!user) return res.status(401).json({ error: 'Usuário não autenticado' })
   
-  // 1. RECEBE A TEMPERATURA NO BODY
   const { itemAgendaId, temperatura } = req.body
 
-  // 2. VALIDAÇÃO: Se não mandou a temperatura, bloqueia!
   if (!itemAgendaId) return res.status(400).json({ error: 'ID do item é obrigatório.' })
   
   if (temperatura === undefined || temperatura === null || temperatura === '') {
     return res.status(400).json({ error: 'A medição da temperatura é obrigatória para realizar a baixa.' })
   }
 
-  // Converte para garantir que é número (caso venha string "37.5")
   const tempFloat = parseFloat(String(temperatura).replace(',', '.'))
   if (isNaN(tempFloat)) {
     return res.status(400).json({ error: 'Temperatura inválida.' })

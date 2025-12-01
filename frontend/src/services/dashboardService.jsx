@@ -1,4 +1,3 @@
-// dashboardService.js
 import axios from 'axios'
 
 const api = axios.create({
@@ -6,7 +5,6 @@ const api = axios.create({
   withCredentials: true
 })
 
-// Funções já existentes
 export const fetchUsuarios = async () => {
   try {
     const res = await api.get('/usuarios')
@@ -26,8 +24,6 @@ export const fetchTiposUsuarios = async () => {
     return []
   }
 }
-
-// FUNÇÕES PARA MÉDICO
 
 export const fetchEstatisticasMedico = async () => {
   try {

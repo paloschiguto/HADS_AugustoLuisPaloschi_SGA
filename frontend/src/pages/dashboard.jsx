@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../services/authContext'
-// Importamos o serviço da Agenda para buscar os dados
 import { fetchAgendaDoDia } from '../services/AgendaService'
 import {
   fetchUsuarios,
@@ -17,7 +16,7 @@ import {
   FileText,
   Shield,
   ArrowRight,
-  Pill, // <--- Ícone novo para o card de prescrições
+  Pill,
   AlertCircle
 } from 'lucide-react'
 
@@ -32,7 +31,6 @@ export default function Dashboard() {
     totalAtendimentos: 0
   })
   const [atendimentosRecentes, setAtendimentosRecentes] = useState([])
-  // Estado para guardar o total de pendências do dia (Geral)
   const [pendenciasHoje, setPendenciasHoje] = useState(0)
   const [loading, setLoading] = useState(true)
 
@@ -41,8 +39,8 @@ export default function Dashboard() {
 
     const carregarDados = async () => {
       try {
-        // Lógica para Médico
-        if (user.tipoUsuario?.descricao === 'Médico') {
+        console.log("Carregando dados do dashboard para o usuário:", user)
+        if (user.tipo === "Médico" || user.tipoUsuario?.descricao === 'Médico') {
           const stats = await fetchEstatisticasMedico()
           setStatsMedico({
             meusAtendimentos: stats.meusAtendimentos ?? 0,
@@ -53,23 +51,19 @@ export default function Dashboard() {
           const recentes = await fetchAtendimentosRecentesMedico()
           setAtendimentosRecentes(recentes)
 
-          // Lógica para Admin / Outros
         } else {
           const u = await fetchUsuarios()
           setUsuarios(u)
           const t = await fetchTiposUsuarios()
           setTipos(t)
 
-          // --- MUDANÇA AQUI: Busca agenda do dia e conta pendentes ---
           try {
-            const agendaHoje = await fetchAgendaDoDia() // Busca dados de hoje
-            // Conta quantos itens têm status 'PENDENTE'
+            const agendaHoje = await fetchAgendaDoDia() 
             const totalPendentes = agendaHoje.filter(item => item.status === 'PENDENTE').length
             setPendenciasHoje(totalPendentes)
           } catch (error) {
             console.error("Erro ao buscar agenda para dashboard:", error)
           }
-          // -----------------------------------------------------------
         }
       } catch (err) {
         console.error('Erro ao carregar dados do dashboard:', err)
@@ -83,7 +77,6 @@ export default function Dashboard() {
 
   if (!user || loading) return <div className="p-6 text-center text-gray-500">Carregando informações...</div>
 
-  // Componente interno para Card de Estatística
   const StatCard = ({ title, value, icon: Icon, colorClass, subtext, textColor }) => (
     <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 flex items-start justify-between transition hover:shadow-md">
       <div>
@@ -104,7 +97,7 @@ export default function Dashboard() {
       <div className="flex flex-col md:flex-row justify-between items-center mb-5">
         <div>
           <h1 className="text-2xl font-bold text-textPrimary dark:text-gray-100">
-            Olá, {user.tipoUsuario?.descricao === 'Médico' ? 'Dr(a). ' : ''}{user.nome.split(' ')[0]} 👋
+            Olá, {user.tipoUsuario?.descricao === 'Médico' ? 'Dr(a). ' : ''}{user.nome.split(' ')[0]}
           </h1>
           <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">
             Resumo operacional do sistema.
@@ -119,7 +112,7 @@ export default function Dashboard() {
         )}
       </div>
 
-      {user.tipoUsuario?.descricao === 'Médico' ? (
+      {user.tipo === "Médico" || user.tipoUsuario?.descricao === 'Médico' ? (
         <>
           {/* CARDS MÉDICO */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
